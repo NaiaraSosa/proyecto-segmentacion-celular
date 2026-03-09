@@ -6,8 +6,6 @@ from scipy.ndimage import binary_dilation, distance_transform_edt, label as ndi_
 def merge_parasites(parasites_lab: np.ndarray, merge_radius: int = 2) -> np.ndarray:
     """
     Une instancias de parasitos cercanas para reducir doble conteo.
-
-    Requiere scipy; si no esta disponible, devuelve la mascara original.
     """
     if parasites_lab.size == 0 or int(parasites_lab.max()) == 0:
         return parasites_lab.astype(np.uint16, copy=False)

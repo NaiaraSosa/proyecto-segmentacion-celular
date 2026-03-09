@@ -4,9 +4,9 @@ import json
 import shutil
 import zipfile
 from pathlib import Path
-
 import tifffile
-
+import numpy as np
+from PIL import Image
 from app.core.config import settings
 from app.pipeline.cellpose import segment_cells
 from app.pipeline.io import IMAGE_EXTS as IO_IMAGE_EXTS
@@ -69,6 +69,17 @@ def run_pipeline(job_id: str) -> Path:
         shutil.copy2(img_path, folder / f"input{img_path.suffix.lower()}")
 
         img2d = load_image_2d(img_path)
+
+        # preview PNG para visualizacion
+        x = img2d.astype(np.float32, copy=False)
+        p1, p99 = np.percentile(x, [1, 99])
+        if p99 > p1:
+            x = np.clip((x - p1) / (p99 - p1), 0, 1)
+        else:
+            x = np.zeros_like(x, dtype=np.float32)
+
+        preview = (x * 255).astype(np.uint8)
+        Image.fromarray(preview).save(folder / "input_preview.png")
 
         cells_lab = segment_cells(img2d)
         parasites_lab, _ = segment_parasites(img2d)

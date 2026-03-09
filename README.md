@@ -54,6 +54,7 @@ conda activate /rhoeql/lab/naiara/conda_envs/segapp_env
 ```bash
 pip install -U pip
 pip install -e .
+pip install "tensorflow-cpu==2.15.*"
 ```
 
 ## Ejecutar la API
