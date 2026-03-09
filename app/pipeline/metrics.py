@@ -27,7 +27,7 @@ def compute_metrics(cells_lab: np.ndarray, parasites_lab: np.ndarray) -> Dict[st
         #"tasa_infeccion": infection_rate,
         #"promedio_parasitos_celula": avg_parasites_per_cell,
         #"promedio_parasitos_celula_infectada": avg_parasites_per_infected_cell,
-        "parasitos_celula": parasites_per_cell.tolist(),
+        "parasitos_por_celula": parasites_per_cell.tolist(),
     }
 
 
