@@ -42,14 +42,14 @@ conda create -p C:\Users\naiar\OneDrive\Escritorio\Unsam\ciencia-de-datos\proyec
 conda create -p /rhoeql/lab/naiara/conda_envs/segapp_env python=3.10 -y
 ```
 
-2. Activar entorno:
+3. Activar entorno:
 
 ```bash
 conda activate C:\Users\naiar\OneDrive\Escritorio\Unsam\ciencia-de-datos\proyecto\segapp_env
 conda activate /rhoeql/lab/naiara/conda_envs/segapp_env
 ```
 
-3. Instalar dependencias del proyecto `pyproject.toml`:
+4. Instalar dependencias del proyecto `pyproject.toml`:
 
 ```bash
 pip install -U pip
@@ -62,15 +62,15 @@ pip install "tensorflow-cpu==2.15.*"
 Desde la carpeta `programa-segmentacion`:
 
 ```bash
+export CELL_MIN_AREA=500
+export PARASITE_MAX_AREA=400
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
-uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 URL local:
 
 ```text
 http://127.0.0.1:8010
-http://127.0.0.1:8000
 ```
 
 ## Variables de entorno
@@ -84,6 +84,8 @@ Se documentan en `.env.example`:
 - `OUTPUTS_DIR`
 - `TEMP_DIR`
 - `MAX_UPLOAD_MB`
+- `CELL_MIN_AREA` (default: `500`)
+- `PARASITE_MAX_AREA` (default: `450`)
 
 ## Estructura del proyecto
 
@@ -102,22 +104,34 @@ data/
 
 ## Flujo actual
 
-1. Subir archivo (`/upload`).
-2. Disparar procesamiento (`/process/{job_id}`).
-3. Descargar resultados (`/download/{job_id}`).
+1. Carga de imagen (`.tif/.tiff/.czi`) desde archivo suelto o ZIP.
+2. Segmentacion de células con Cellpose.
+3. Filtro de células por área mínima (`CELL_MIN_AREA`).
+4. Segmentación de parásitos con StarDist.
+5. Filtro de parásitos por área máxima (`PARASITE_MAX_AREA`).
+6. Merge de parásitos cercanos para reducir doble conteo.
+7. Asignación parasito -> célula (solape, o celula más cercana si no hay solape).
+8. Cálculo de métricas y export de resultados.
 
-## Troubleshooting rapido
+## Métricas exportadas ```(metrics.json)```
+- total_celulas: número total de células detectadas.
+- total_parasitos: número total de parásitos detectados.
+- celulas_infectadas: células con al menos un parásito asignado.
+- parasitos_no_asignados: cantidad de parásitos que no pudieron asignarse a ninguna célula.
+- parasitos_por_celula = cantidad de parásitos asignados por célula.¨
 
-- `WinError 10013`: usar otro puerto (ej. `8010`).
-- `python` apunta a `WindowsApps`: activar `segapp_env` y volver a intentar.
-- `uvicorn` no se reconoce: ejecutar con `python -m uvicorn ...`.
+## Estructura del ZIP de salida
 
-## Roadmap
+Por cada imagen:
+- input.<ext>: imagen original.
+- input_preview.png: vista normalizada para inspección visual.
+- cell_mask.tif: máscara de instancias de células (Cellpose).
+- parasite_mask.tif: máscara de instancias de parásitos (StarDist).
+- metrics.json: métricas por imagen.
 
-- Integrar inference real con Cellpose y StarDist.
-- Separar `runner.py` en etapas (io, preprocess, inference, postprocess, export).
-- Agregar tests de API y pipeline.
-- Agregar Dockerfile para entorno reproducible.
+A nivel job:
+- summary.json: agregados de todo el lote.
+- results_<job_id>.zip: paquete final de resultados.
 
 **Git**
 ```bash

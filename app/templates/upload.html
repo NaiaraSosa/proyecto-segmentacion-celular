@@ -1,0 +1,50 @@
+﻿<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Archivo subido</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel">
+        <p class="eyebrow">Carga completa</p>
+        <h1>Archivo recibido</h1>
+
+        <div class="meta">
+          <p><span>Job ID</span> {{ job_id }}</p>
+          <p><span>Archivo</span> {{ filename }}</p>
+        </div>
+
+        <form id="process-form" action="/process/{{ job_id }}" method="post" class="stack">
+          <button id="process-btn" type="submit" class="btn btn-primary">Procesar segmentacion</button>
+        </form>
+
+        <a href="/" class="btn btn-ghost">Volver al inicio</a>
+      </section>
+    </main>
+    <div id="progress-overlay" class="progress-overlay" aria-live="polite" aria-hidden="true">
+      <div class="progress-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <h2>Procesando imagen</h2>
+        <p>Esto puede tardar unos minutos segun el tamano del archivo y el modelo.</p>
+        <div class="progress-track">
+          <div class="progress-bar"></div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const form = document.getElementById("process-form");
+      const button = document.getElementById("process-btn");
+      const overlay = document.getElementById("progress-overlay");
+
+      form.addEventListener("submit", () => {
+        button.disabled = true;
+        button.textContent = "Procesando...";
+        overlay.classList.add("is-visible");
+        overlay.setAttribute("aria-hidden", "false");
+      });
+    </script>
+  </body>
+</html>

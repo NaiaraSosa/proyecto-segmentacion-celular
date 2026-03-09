@@ -1,0 +1,27 @@
+﻿<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Procesamiento listo</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel">
+        <p class="eyebrow">Segmentacion completada</p>
+        <h1>Resultados disponibles</h1>
+
+        <div class="meta">
+          <p><span>Job ID</span> {{ job_id }}</p>
+          <p><span>ZIP</span> {{ zip_name }}</p>
+        </div>
+
+        <div class="actions">
+          <a href="/download/{{ job_id }}" class="btn btn-primary">Descargar ZIP</a>
+          <a href="/" class="btn btn-ghost">Volver al inicio</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

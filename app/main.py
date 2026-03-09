@@ -1,36 +1,24 @@
-# entrada FASTAPI
+﻿# entrada FASTAPI
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
-from app.core.config import ensure_dirs
+from fastapi import FastAPI, Request
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
 from app.api.routes import router as api_router
+from app.core.config import ensure_dirs
 
-app = FastAPI(title="Programa Segmentación")
+app = FastAPI(title="Programa Segmentacion")
+templates = Jinja2Templates(directory="app/templates")
 
 app.include_router(api_router)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 
 @app.on_event("startup")
 def _startup():
     ensure_dirs()
 
-@app.get("/", response_class=HTMLResponse)
-def home():
-    return """
-    <html>
-      <head>
-        <title>Programa Segmentación</title>
-      </head>
-      <body style="font-family: sans-serif; max-width: 720px; margin: 40px auto;">
-        <h1>Programa Segmentación</h1>
-        
-        <h2>Subir imagen o ZIP</h2>
 
-        <form action="/upload" enctype="multipart/form-data" method="post">
-          <input type="file" name="file" required>
-          <br><br>
-          <button type="submit">Subir</button>
-        </form>
-        
-      </body>
-    </html>
-    """
+@app.get("/")
+def home(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})

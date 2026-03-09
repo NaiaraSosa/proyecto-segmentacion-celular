@@ -1,2 +1,26 @@
+﻿<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Programa de Segmentacion</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel">
+        <p class="eyebrow">Segmentacion Celular</p>
+        <h1>Subi una imagen para procesar</h1>
+        <p class="muted">
+          Soporta <code>.tif</code>, <code>.tiff</code>, <code>.czi</code> o un <code>.zip</code> con imagenes.
+        </p>
 
-# una página simple (subir archivo + botón)
+        <form action="/upload" method="post" enctype="multipart/form-data" class="stack">
+          <label for="file" class="file-label">Seleccionar archivo</label>
+          <input id="file" type="file" name="file" required />
+          <button type="submit" class="btn btn-primary">Subir archivo</button>
+        </form>
+      </section>
+    </main>
+  </body>
+</html>
