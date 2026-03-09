@@ -1,21 +1,26 @@
 ﻿from __future__ import annotations
 
 import json
+import os
 import shutil
 import zipfile
 from pathlib import Path
-import tifffile
+
 import numpy as np
+import tifffile
 from PIL import Image
+
 from app.core.config import settings
 from app.pipeline.cellpose import segment_cells
 from app.pipeline.io import IMAGE_EXTS as IO_IMAGE_EXTS
 from app.pipeline.io import load_image_2d
 from app.pipeline.metrics import compute_metrics, summarize_job
-from app.pipeline.postprocess import merge_parasites
+from app.pipeline.postprocess import filter_cells_by_area, filter_parasites_by_area, merge_parasites
 from app.pipeline.stardist import segment_parasites
 
 IMAGE_EXTS = set(IO_IMAGE_EXTS) | {".zip"}
+CELL_MIN_AREA = int(os.getenv("CELL_MIN_AREA", "500"))
+PARASITE_MAX_AREA = int(os.getenv("PARASITE_MAX_AREA", "450"))
 
 
 def _resolve_input_images(uploaded: Path, job_temp_dir: Path) -> list[Path]:
@@ -82,7 +87,11 @@ def run_pipeline(job_id: str) -> Path:
         Image.fromarray(preview).save(folder / "input_preview.png")
 
         cells_lab = segment_cells(img2d)
+        cells_lab = filter_cells_by_area(cells_lab, min_area=CELL_MIN_AREA)
+
         parasites_lab, _ = segment_parasites(img2d)
+        parasites_lab = filter_parasites_by_area(parasites_lab, max_area=PARASITE_MAX_AREA)
+
         parasites_lab = merge_parasites(parasites_lab, merge_radius=2)
 
         tifffile.imwrite(str(folder / "cell_mask.tif"), cells_lab.astype("uint16"))

@@ -1,7 +1,50 @@
 ﻿from __future__ import annotations
+
 from typing import Tuple
+
 import numpy as np
 from scipy.ndimage import binary_dilation, distance_transform_edt, label as ndi_label
+
+
+def filter_cells_by_area(cells_lab: np.ndarray, min_area: int) -> np.ndarray:
+    """
+    Conserva solo celulas con area >= min_area y re-etiqueta desde 1..N.
+    """
+    if cells_lab.size == 0 or int(cells_lab.max()) == 0:
+        return cells_lab.astype(np.uint16, copy=False)
+
+    if min_area <= 0:
+        return cells_lab.astype(np.uint16, copy=False)
+
+    areas = np.bincount(cells_lab.ravel())
+    keep_ids = np.where(areas >= int(min_area))[0]
+    keep_ids = keep_ids[keep_ids != 0]
+
+    out = np.zeros_like(cells_lab, dtype=np.uint16)
+    for new_id, old_id in enumerate(keep_ids, start=1):
+        out[cells_lab == old_id] = new_id
+    return out
+
+
+def filter_parasites_by_area(parasites_lab: np.ndarray, max_area: int) -> np.ndarray:
+    """
+    Conserva solo parasitos con area <= max_area y re-etiqueta desde 1..N.
+    """
+    if parasites_lab.size == 0 or int(parasites_lab.max()) == 0:
+        return parasites_lab.astype(np.uint16, copy=False)
+
+    if max_area <= 0:
+        return parasites_lab.astype(np.uint16, copy=False)
+
+    areas = np.bincount(parasites_lab.ravel())
+    keep_ids = np.where(areas <= int(max_area))[0]
+    keep_ids = keep_ids[keep_ids != 0]
+
+    out = np.zeros_like(parasites_lab, dtype=np.uint16)
+    for new_id, old_id in enumerate(keep_ids, start=1):
+        out[parasites_lab == old_id] = new_id
+    return out
+
 
 def merge_parasites(parasites_lab: np.ndarray, merge_radius: int = 2) -> np.ndarray:
     """
