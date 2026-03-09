@@ -15,6 +15,12 @@ dependencies = [
   "pydantic>=2.0",
   "pillow>=10.0",
   "numpy>=1.26",
+  "scipy>=1.11",
+  "tifffile>=2024.0.0",
+  "czifile>=2019.7.2",
+  "cellpose>=3.0",
+  "stardist>=0.9.1",
+  "csbdeep>=0.8.0",
 ]
 
 [tool.setuptools.packages.find]

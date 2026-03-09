@@ -1,0 +1,1 @@
+# guardado de máscaras, overlays y JSON.

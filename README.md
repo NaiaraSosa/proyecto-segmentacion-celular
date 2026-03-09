@@ -1,4 +1,4 @@
-﻿# **Proyecto: Automatización de segmentación celular para imágenes microscópicas**
+﻿# **Automatización de segmentación celular para imágenes microscópicas**
 
 En el Instituto de Investigaciones Biotecnológicas, se está trabajando para hallar fármacos capaces de curar la Enfermedad de Chagas. Con este fin, una parte del proceso consiste en ensayos de fármacos experimentales, en cultivos de células infectadas con los parásitos causantes de la enfermedad. Se toman  imágenes microscópicas del cultivo de las células, previa y posteriormente a ser infectadas. 
 
@@ -17,7 +17,7 @@ Aplicacion web en FastAPI para ejecutar un pipeline de segmentación de imágene
 - Conda/Miniforge (recomendado)
 - SO probado: Windows
 
-## Instalacion
+## Instalación
 
 1. Miniforge:
 
@@ -29,7 +29,9 @@ bash Miniforge3-Linux-x86_64.sh -p /<carpeta>/miniforge3
 ```
 
 - Windows:
+
 Ingresar a: https://github.com/conda-forge/miniforge/releases/latest
+
 Descargar `Miniforge3-Windows-x86_64.exe` y ejecutar `.exe`.
 
 
