@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-from csbdeep.data import Normalizer
+from csbdeep.data import PercentileNormalizer
 from stardist.models import StarDist2D
 
 _MODEL = None
@@ -20,7 +20,7 @@ def segment_parasites(
 ):
 
     model = _get_stardist_model(model_name=model_name)
-    normalizer = Normalizer()
+    normalizer = PercentileNormalizer()
     labels, details = model.predict_instances(
         img2d,
         prob_thresh=prob_thresh,
