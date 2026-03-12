@@ -20,7 +20,7 @@ from app.pipeline.stardist import segment_parasites
 
 IMAGE_EXTS = set(IO_IMAGE_EXTS) | {".zip"}
 CELL_MIN_AREA = int(os.getenv("CELL_MIN_AREA", "500"))
-PARASITE_MAX_AREA = int(os.getenv("PARASITE_MAX_AREA", "450"))
+PARASITE_MAX_AREA = int(os.getenv("PARASITE_MAX_AREA", "500"))
 
 
 def _resolve_input_images(uploaded: Path, job_temp_dir: Path) -> list[Path]:
@@ -83,8 +83,10 @@ def run_pipeline(job_id: str) -> Path:
         else:
             x = np.zeros_like(x, dtype=np.float32)
 
-        preview = (x * 255).astype(np.uint8)
-        Image.fromarray(preview).save(folder / "input_preview.png")
+        preview_gray = (x * 255).astype(np.uint8)
+        preview_rgb = np.zeros((*preview_gray.shape, 3), dtype=np.uint8)
+        preview_rgb[..., 2] = preview_gray  # visualizacion en canal azul
+        Image.fromarray(preview_rgb, mode="RGB").save(folder / "preview.png")
 
         cells_lab = segment_cells(img2d)
         cells_lab = filter_cells_by_area(cells_lab, min_area=CELL_MIN_AREA)

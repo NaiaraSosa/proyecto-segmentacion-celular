@@ -71,33 +71,14 @@ def assign_by_nearest_cell(cells_lab: np.ndarray, pmask: np.ndarray) -> int:
     if not cell_bw.any():
         return 0
 
-    if distance_transform_edt is not None:
-        _, (iy, ix) = distance_transform_edt(~cell_bw, return_indices=True)
-        ys, xs = np.where(pmask)
-        if ys.size == 0:
-            return 0
-        y0 = int(np.round(float(ys.mean())))
-        x0 = int(np.round(float(xs.mean())))
-        ny, nx = int(iy[y0, x0]), int(ix[y0, x0])
-        return int(cells_lab[ny, nx])
-
     ys, xs = np.where(pmask)
     if ys.size == 0:
         return 0
-    py, px = float(ys.mean()), float(xs.mean())
-
-    best_cid = 0
-    best_d2 = float("inf")
-    for cid in range(1, int(cells_lab.max()) + 1):
-        cyx = np.where(cells_lab == cid)
-        if cyx[0].size == 0:
-            continue
-        cy, cx = float(cyx[0].mean()), float(cyx[1].mean())
-        d2 = (cy - py) ** 2 + (cx - px) ** 2
-        if d2 < best_d2:
-            best_d2 = d2
-            best_cid = cid
-    return int(best_cid)
+    _, (iy, ix) = distance_transform_edt(~cell_bw, return_indices=True)
+    y0 = int(np.round(float(ys.mean())))
+    x0 = int(np.round(float(xs.mean())))
+    ny, nx = int(iy[y0, x0]), int(ix[y0, x0])
+    return int(cells_lab[ny, nx])
 
 
 def conteo_infeccion(cells_lab: np.ndarray, parasites_lab: np.ndarray) -> Tuple[int, np.ndarray, int]:
