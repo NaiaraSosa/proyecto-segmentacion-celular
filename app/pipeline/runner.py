@@ -1,6 +1,6 @@
 ﻿from __future__ import annotations
 
-import json
+import csv
 import os
 import shutil
 import zipfile
@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.cm as cm 
 import tifffile
 from PIL import Image
+from scipy.ndimage import binary_erosion
 
 from app.core.config import settings
 from app.pipeline.cellpose import segment_cells
@@ -45,6 +46,43 @@ def _resolve_input_images(uploaded: Path, job_temp_dir: Path) -> list[Path]:
 
     return images
 
+def _write_csv(path: Path, row: dict[str, object], fieldnames: list[str]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerow(row)
+
+def _metrics_to_csv_row(metrics: dict[str, object]) -> dict[str, object]:
+    row = dict(metrics)
+    row["parasitos_por_celula"] = ";".join(str(x) for x in row.get("parasitos_por_celula", []))
+    return row
+
+
+def _build_infected_overlay(
+    preview_rgb: np.ndarray, cells_lab: np.ndarray, parasites_per_cell: list[int] | np.ndarray
+) -> np.ndarray:
+    """
+    Crea un overlay RGB marcando en rojo el contorno de celulas infectadas.
+    """
+    overlay = preview_rgb.copy()
+    counts = np.asarray(parasites_per_cell, dtype=int)
+    if counts.size == 0:
+        return overlay
+
+    infected_ids = np.where(counts > 0)[0] + 1
+    if infected_ids.size == 0:
+        return overlay
+
+    infected_mask = np.isin(cells_lab, infected_ids)
+    if not infected_mask.any():
+        return overlay
+
+    # Solo dibuja borde para conservar visibilidad del fondo.
+    eroded = binary_erosion(infected_mask, structure=np.ones((3, 3), dtype=bool), border_value=0)
+    border = infected_mask & ~eroded
+    overlay[border] = np.array([255, 0, 0], dtype=np.uint8)
+    return overlay
+
 
 def run_pipeline(job_id: str) -> Path:
     job_upload_dir = settings.uploads_dir / job_id
@@ -72,9 +110,21 @@ def run_pipeline(job_id: str) -> Path:
         folder = images_root / f"{img_id}__{img_path.stem}"
         folder.mkdir(parents=True, exist_ok=True)
 
-        shutil.copy2(img_path, folder / f"input{img_path.suffix.lower()}")
-
         img2d = load_image_2d(img_path)
+
+        # imagen de entrada convertida a tiff
+        img_out = np.asarray(img2d)
+        if np.issubdtype(img_out.dtype, np.floating):
+            img_out = np.nan_to_num(img_out, nan=0.0, posinf=0.0, neginf=0.0)
+            vmin, vmax = float(img_out.min()), float(img_out.max())
+            if vmax > vmin:
+                img_out = ((img_out - vmin) / (vmax - vmin) * 65535.0).astype(np.uint16)
+            else:
+                img_out = np.zeros_like(img_out, dtype=np.uint16)
+        elif img_out.dtype != np.uint16:
+            img_out = img_out.astype(np.uint16, copy=False)
+
+        tifffile.imwrite(str(folder / "input.tif"), img_out)
 
         # preview PNG para visualizacion
         x = img2d.astype(np.float32, copy=False)
@@ -85,8 +135,6 @@ def run_pipeline(job_id: str) -> Path:
             x = np.zeros_like(x, dtype=np.float32)
 
         preview_gray = (x * 255).astype(np.uint8)
-        #preview_rgb = np.zeros((*preview_gray.shape, 3), dtype=np.uint8)
-        #preview_rgb[..., 2] = preview_gray  # visualizacion en canal azul
         preview_rgb = (cm.get_cmap("viridis")(preview_gray / 255.0)[..., :3] * 255).astype(np.uint8)
         Image.fromarray(preview_rgb, mode="RGB").save(folder / "preview.png")
 
@@ -109,11 +157,42 @@ def run_pipeline(job_id: str) -> Path:
         }
         all_metrics.append(metrics)
 
-        (folder / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
+        infected_overlay = _build_infected_overlay(
+            preview_rgb=preview_rgb,
+            cells_lab=cells_lab,
+            parasites_per_cell=metrics.get("parasitos_por_celula", []),
+        )
+        Image.fromarray(infected_overlay, mode="RGB").save(folder / "infected_overlay.png")
+
+        metrics_row = _metrics_to_csv_row(metrics)
+        _write_csv(
+            folder / "metrics.csv", 
+            metrics_row, 
+            fieldnames=[
+                "job_id",
+                "image_id",
+                "source_filename",
+                "total_celulas",
+                "total_parasitos",
+                "celulas_infectadas",
+                "parasitos_no_asignados",
+                "parasitos_por_celula",
+            ]
+        )
 
     summary = summarize_job(all_metrics)
-    summary_payload = {"job_id": job_id, **summary}
-    (export_root / "summary.json").write_text(json.dumps(summary_payload, indent=2), encoding="utf-8")
+    summary_row = {"job_id": job_id, **summary}
+    _write_csv(
+        export_root / "summary.csv",
+        summary_row,
+        fieldnames=[
+            "job_id",
+            "imagenes_procesadas",
+            "total_celulas",
+            "total_parasitos",
+            "total_celulas_infectadas",
+        ]
+    )
 
     zip_path = job_output_dir / f"results_{job_id}.zip"
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:

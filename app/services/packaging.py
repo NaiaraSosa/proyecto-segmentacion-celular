@@ -1,2 +1,0 @@
-
-# armar zip de resultados

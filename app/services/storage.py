@@ -1,2 +1,0 @@
-
-# guardar uploads/outputs
