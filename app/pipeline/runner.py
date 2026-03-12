@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 
 import numpy as np
+import matplotlib.cm as cm 
 import tifffile
 from PIL import Image
 
@@ -84,8 +85,9 @@ def run_pipeline(job_id: str) -> Path:
             x = np.zeros_like(x, dtype=np.float32)
 
         preview_gray = (x * 255).astype(np.uint8)
-        preview_rgb = np.zeros((*preview_gray.shape, 3), dtype=np.uint8)
-        preview_rgb[..., 2] = preview_gray  # visualizacion en canal azul
+        #preview_rgb = np.zeros((*preview_gray.shape, 3), dtype=np.uint8)
+        #preview_rgb[..., 2] = preview_gray  # visualizacion en canal azul
+        preview_rgb = (cm.get_cmap("viridis")(preview_gray / 255.0)[..., :3] * 255).astype(np.uint8)
         Image.fromarray(preview_rgb, mode="RGB").save(folder / "preview.png")
 
         cells_lab = segment_cells(img2d)

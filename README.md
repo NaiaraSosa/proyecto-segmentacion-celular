@@ -59,7 +59,7 @@ pip install "tensorflow-cpu==2.15.*"
 
 ## Ejecutar la API
 
-Desde la carpeta `programa-segmentacion`:
+Desde la carpeta `proyecto-segmentacion-celular`:
 
 ```bash
 export CELL_MIN_AREA=500

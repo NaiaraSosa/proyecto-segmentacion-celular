@@ -46,7 +46,7 @@ def summarize_job(image_metrics: list[Dict[str, object]]) -> Dict[str, object]:
 
     total_cells = int(sum(int(m.get("total_celulas", 0)) for m in image_metrics))
     total_parasites = int(sum(int(m.get("total_parasitos", 0)) for m in image_metrics))
-    total_infected_cells = int(sum(int(m.get("total_celulas_infectadas", 0)) for m in image_metrics))
+    total_infected_cells = int(sum(int(m.get("celulas_infectadas", 0)) for m in image_metrics))
     # mean_infection_rate = float(np.mean([float(m.get("tasa_infeccion_promedio", 0.0)) for m in image_metrics]))
 
     return {
