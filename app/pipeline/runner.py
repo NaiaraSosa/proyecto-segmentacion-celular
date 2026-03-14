@@ -78,7 +78,7 @@ def _build_infected_overlay(
         return overlay
 
     # Solo dibuja borde para conservar visibilidad del fondo.
-    eroded = binary_erosion(infected_mask, structure=np.ones((3, 3), dtype=bool), border_value=0)
+    eroded = binary_erosion(infected_mask, structure=np.ones((3, 3), dtype=bool), border_value=0) ## agrandar el borde para mejor visualizacion
     border = infected_mask & ~eroded
     overlay[border] = np.array([255, 0, 0], dtype=np.uint8)
     return overlay
@@ -136,7 +136,7 @@ def run_pipeline(job_id: str) -> Path:
 
         preview_gray = (x * 255).astype(np.uint8)
         preview_rgb = (cm.get_cmap("viridis")(preview_gray / 255.0)[..., :3] * 255).astype(np.uint8)
-        Image.fromarray(preview_rgb, mode="RGB").save(folder / "preview.png")
+        Image.fromarray(preview_rgb, mode="RGB").save(folder / "input_preview.png")
 
         cells_lab = segment_cells(img2d)
         cells_lab = filter_cells_by_area(cells_lab, min_area=CELL_MIN_AREA)
