@@ -1,6 +1,4 @@
-import csv
 import shutil
-from pathlib import Path
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
@@ -13,45 +11,6 @@ from app.services.jobs import create_job
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 PREVIEW_FILES = {"input_preview.png", "cell_mask_preview.png", "parasite_mask_preview.png"}
-
-
-def _read_metrics(folder: Path) -> dict[str, object]:
-    csv_path = folder / "metrics.csv"
-    if not csv_path.exists():
-        return {}
-
-    with csv_path.open("r", encoding="utf-8", newline="") as f:
-        row = next(csv.DictReader(f), None)
-
-    if row is None:
-        return {}
-
-    return {
-        "total_celulas": int(row.get("total_celulas") or 0),
-        "total_parasitos": int(row.get("total_parasitos") or 0),
-        "celulas_infectadas": int(row.get("celulas_infectadas") or 0),
-        "parasitos_no_asignados": int(row.get("parasitos_no_asignados") or 0),
-    }
-
-
-def _build_preview_items(job_id: str) -> list[dict[str, object]]:
-    images_root = settings.outputs_dir / job_id / f"job_{job_id}" / "images"
-    if not images_root.exists():
-        return []
-
-    items: list[dict[str, object]] = []
-    folders = sorted([p for p in images_root.iterdir() if p.is_dir()], key=lambda p: p.name.lower())
-    for folder in folders:
-        items.append(
-            {
-                "title": folder.name,
-                "input_url": f"/preview/{job_id}/{folder.name}/input_preview.png",
-                "cell_url": f"/preview/{job_id}/{folder.name}/cell_mask_preview.png",
-                "parasite_url": f"/preview/{job_id}/{folder.name}/parasite_mask_preview.png",
-                "metrics": _read_metrics(folder),
-            }
-        )
-    return items
 
 
 @router.post("/upload")
@@ -78,8 +37,13 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
 
 @router.post("/process/{job_id}")
 def process_job(request: Request, job_id: str):
-    zip_path = run_pipeline(job_id)
-    preview_items = _build_preview_items(job_id)
+    zip_path, preview_items = run_pipeline(job_id)
+
+    for item in preview_items:
+        folder_name = item.get("folder_name", "")
+        item["input_url"] = f"/preview/{job_id}/{folder_name}/input_preview.png"
+        item["cell_url"] = f"/preview/{job_id}/{folder_name}/cell_mask_preview.png"
+        item["parasite_url"] = f"/preview/{job_id}/{folder_name}/parasite_mask_preview.png"
 
     return templates.TemplateResponse(
         "processed.html",

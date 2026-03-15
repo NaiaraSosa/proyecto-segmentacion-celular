@@ -1,6 +1,5 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
-import csv
 import os
 import shutil
 import zipfile
@@ -8,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import tifffile
+from openpyxl import Workbook
 from scipy.ndimage import binary_erosion
 
 from app.core.config import settings
@@ -45,16 +45,55 @@ def _resolve_input_images(uploaded: Path, job_temp_dir: Path) -> list[Path]:
 
     return images
 
-def _write_csv(path: Path, row: dict[str, object], fieldnames: list[str]) -> None:
-    with path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerow(row)
 
-def _metrics_to_csv_row(metrics: dict[str, object]) -> dict[str, object]:
-    row = dict(metrics)
-    row["parasitos_por_celula"] = ";".join(str(x) for x in row.get("parasitos_por_celula", []))
-    return row
+def _write_metrics_excel(path: Path, summary: dict[str, object], image_metrics: list[dict[str, object]]) -> None:
+    wb = Workbook()
+
+    ws_summary = wb.active
+    ws_summary.title = "Generales"
+    ws_summary.append(
+        ["job_id", "imagenes_procesadas", "total_celulas", "total_parasitos", "total_celulas_infectadas"]
+    )
+    ws_summary.append(
+        [
+            summary.get("job_id", ""),
+            int(summary.get("imagenes_procesadas", 0)),
+            int(summary.get("total_celulas", 0)),
+            int(summary.get("total_parasitos", 0)),
+            int(summary.get("total_celulas_infectadas", 0)),
+        ]
+    )
+
+    ws_images = wb.create_sheet("Por imagen")
+    ws_images.append(
+        [
+            "job_id",
+            "image_id",
+            "source_filename",
+            "total_celulas",
+            "total_parasitos",
+            "celulas_infectadas",
+            "parasitos_no_asignados",
+            "promedio_parasitos_por_celula",
+            "parasitos_por_celula",
+        ]
+    )
+    for m in image_metrics:
+        ws_images.append(
+            [
+                m.get("job_id", ""),
+                m.get("image_id", ""),
+                m.get("source_filename", ""),
+                int(m.get("total_celulas", 0)),
+                int(m.get("total_parasitos", 0)),
+                int(m.get("celulas_infectadas", 0)),
+                int(m.get("parasitos_no_asignados", 0)),
+                float(m.get("promedio_parasitos_por_celula", 0.0)),
+                ";".join(str(x) for x in m.get("parasitos_por_celula", [])),
+            ]
+        )
+
+    wb.save(path)
 
 
 def _build_infected_overlay(
@@ -76,11 +115,11 @@ def _build_infected_overlay(
     if not infected_mask.any():
         return overlay
 
-    # Solo dibuja borde para conservar visibilidad del fondo.
-    eroded = binary_erosion(infected_mask, structure=np.ones((3, 3), dtype=bool), border_value=0) ## agrandar el borde para mejor visualizacion
+    eroded = binary_erosion(infected_mask, structure=np.ones((3, 3), dtype=bool), border_value=0)
     border = infected_mask & ~eroded
     overlay[border] = np.array([255, 0, 0], dtype=np.uint8)
     return overlay
+
 
 def _convert_to_tiff(img: np.ndarray) -> np.ndarray:
     if np.issubdtype(img.dtype, np.floating):
@@ -95,7 +134,7 @@ def _convert_to_tiff(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def run_pipeline(job_id: str) -> Path:
+def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
     job_upload_dir = settings.uploads_dir / job_id
     job_output_dir = settings.outputs_dir / job_id
     job_temp_dir = settings.temp_dir / job_id
@@ -115,20 +154,18 @@ def run_pipeline(job_id: str) -> Path:
     images_root.mkdir(parents=True, exist_ok=True)
 
     all_metrics: list[dict[str, object]] = []
+    preview_items: list[dict[str, object]] = []
 
     for i, img_path in enumerate(images, start=1):
         img_id = f"{i:04d}"
         folder = images_root / f"{img_id}__{img_path.stem}"
         folder.mkdir(parents=True, exist_ok=True)
 
-        # carga imagen 2D
         img2d = load_image_2d(img_path)
 
-        # imagen de entrada convertida a tiff
         img_out = _convert_to_tiff(img2d)
         tifffile.imwrite(str(folder / "input.tiff"), img_out)
 
-        # imagen de entrada convertida a PNG para visualizacion
         preview_rgb = build_input_preview(img2d)
         save_preview(folder / "input_preview.png", preview_rgb)
 
@@ -137,10 +174,8 @@ def run_pipeline(job_id: str) -> Path:
 
         parasites_lab, _ = segment_parasites(img2d)
         parasites_lab = filter_parasites_by_area(parasites_lab, max_area=PARASITE_MAX_AREA)
-
         parasites_lab = merge_parasites(parasites_lab, merge_radius=2)
 
-        # mascaras de segmentacion convertidas a PNG para visualizacion
         tifffile.imwrite(str(folder / "cell_mask.tiff"), cells_lab.astype("uint16"))
         tifffile.imwrite(str(folder / "parasite_mask.tiff"), parasites_lab.astype("uint16"))
         save_preview(folder / "cell_mask_preview.png", build_instance_preview(cells_lab))
@@ -154,6 +189,19 @@ def run_pipeline(job_id: str) -> Path:
         }
         all_metrics.append(metrics)
 
+        preview_items.append(
+            {
+                "title": folder.name,
+                "folder_name": folder.name,
+                "metrics": {
+                    "total_celulas": int(metrics.get("total_celulas", 0)),
+                    "total_parasitos": int(metrics.get("total_parasitos", 0)),
+                    "celulas_infectadas": int(metrics.get("celulas_infectadas", 0)),
+                    "parasitos_no_asignados": int(metrics.get("parasitos_no_asignados", 0)),
+                },
+            }
+        )
+
         infected_overlay = _build_infected_overlay(
             preview_rgb=preview_rgb,
             cells_lab=cells_lab,
@@ -161,36 +209,9 @@ def run_pipeline(job_id: str) -> Path:
         )
         save_preview(folder / "infected_overlay.png", infected_overlay)
 
-        metrics_row = _metrics_to_csv_row(metrics)
-        _write_csv(
-            folder / "metrics.csv", 
-            metrics_row, 
-            fieldnames=[
-                "job_id",
-                "image_id",
-                "source_filename",
-                "total_celulas",
-                "total_parasitos",
-                "celulas_infectadas",
-                #"parasitos_no_asignados",
-                "parasitos_por_celula",
-                "promedio_parasitos_por_celula",
-            ]
-        )
-
     summary = summarize_job(all_metrics)
     summary_row = {"job_id": job_id, **summary}
-    _write_csv(
-        export_root / "summary.csv",
-        summary_row,
-        fieldnames=[
-            "job_id",
-            "imagenes_procesadas",
-            "total_celulas",
-            "total_parasitos",
-            "total_celulas_infectadas",
-        ]
-    )
+    _write_metrics_excel(export_root / "metrics.xlsx", summary_row, all_metrics)
 
     zip_path = job_output_dir / f"results_{job_id}.zip"
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
@@ -198,4 +219,4 @@ def run_pipeline(job_id: str) -> Path:
             if p.is_file():
                 zf.write(p, arcname=str(p.relative_to(job_output_dir)))
 
-    return zip_path
+    return zip_path, preview_items
