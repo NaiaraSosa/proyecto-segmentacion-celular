@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
   <head>
     <meta charset="utf-8" />
@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
-    <main class="page">
-      <section class="panel">
+    <main class="page page-results">
+      <section class="panel panel-results">
         <p class="eyebrow">Segmentación completada</p>
         <h1>Resultados disponibles</h1>
 
@@ -17,11 +17,100 @@
           <p><span>ZIP</span> {{ zip_name }}</p>
         </div>
 
-        <div class="actions">
+        {% if preview_items and preview_items|length > 0 %}
+        <section class="viewer" aria-live="polite">
+          <div class="viewer-nav">
+            <button id="prev-btn" class="btn btn-ghost" type="button">Anterior</button>
+            <p id="viewer-title" class="viewer-title"></p>
+            <button id="next-btn" class="btn btn-ghost" type="button">Siguiente</button>
+          </div>
+
+          <div class="viewer-grid">
+            <article class="viewer-card">
+              <h2>Original</h2>
+              <img id="img-input" src="" alt="Vista previa original" loading="lazy" />
+            </article>
+            <article class="viewer-card">
+              <h2>Máscara de células</h2>
+              <img id="img-cell" src="" alt="Vista previa de cell mask" loading="lazy" />
+            </article>
+            <article class="viewer-card">
+              <h2>Máscara de parásitos</h2>
+              <img id="img-parasite" src="" alt="Vista previa de parasite mask" loading="lazy" />
+            </article>
+            <article class="viewer-card viewer-metrics">
+              <h2>Métricas</h2>
+              <dl>
+                <div><dt>Total células</dt><dd id="m-total-celulas">0</dd></div>
+                <div><dt>Total parásitos</dt><dd id="m-total-parasitos">0</dd></div>
+                <div><dt>Células infectadas</dt><dd id="m-celulas-infectadas">0</dd></div>
+                <div><dt>Parásitos por célula</dt><dd id="m-parasitos-por-celula">0</dd></div>
+                <div><dt>Promedio parásitos por célula</dt><dd id="m-promedio-parasitos-por-celula">0</dd></div>
+              </dl>
+            </article>
+          </div>
+        </section>
+        {% else %}
+        <p class="muted">No hay previews disponibles para este job.</p>
+        {% endif %}
+
+        <div class="actions actions-results">
           <a href="/download/{{ job_id }}" class="btn btn-primary">Descargar ZIP</a>
           <a href="/" class="btn btn-ghost">Volver al inicio</a>
         </div>
       </section>
     </main>
+
+    {% if preview_items and preview_items|length > 0 %}
+    <script id="preview-data" type="application/json">{{ preview_items | tojson }}</script>
+    <script>
+      (() => {
+        const dataEl = document.getElementById("preview-data");
+        const items = JSON.parse(dataEl.textContent || "[]");
+        if (!items.length) return;
+
+        const titleEl = document.getElementById("viewer-title");
+        const inputEl = document.getElementById("img-input");
+        const cellEl = document.getElementById("img-cell");
+        const parasiteEl = document.getElementById("img-parasite");
+
+        const totalCelulasEl = document.getElementById("m-total-celulas");
+        const totalParasitosEl = document.getElementById("m-total-parasitos");
+        const celulasInfectadasEl = document.getElementById("m-celulas-infectadas");
+        const parasitosPorCelulaEl = document.getElementById("m-parasitos-por-celula");
+        const promedioParasitosPorCelulaEl = document.getElementById("m-promedio-parasitos-por-celula");
+
+        let idx = 0;
+
+        function render() {
+          const item = items[idx];
+          titleEl.textContent = `${item.title} (${idx + 1}/${items.length})`;
+          inputEl.src = item.input_url;
+          cellEl.src = item.cell_url;
+          parasiteEl.src = item.parasite_url;
+
+          const m = item.metrics || {};
+          totalCelulasEl.textContent = String(m.total_celulas ?? 0);
+          totalParasitosEl.textContent = String(m.total_parasitos ?? 0);
+          celulasInfectadasEl.textContent = String(m.celulas_infectadas ?? 0);
+          parasitosPorCelulaEl.textContent = String(m.parasitos_por_celula ?? 0);
+          promedioParasitosPorCelulaEl.textContent = String(m.promedio_parasitos_por_celula ?? 0);
+
+        }
+
+        document.getElementById("prev-btn").addEventListener("click", () => {
+          idx = (idx - 1 + items.length) % items.length;
+          render();
+        });
+
+        document.getElementById("next-btn").addEventListener("click", () => {
+          idx = (idx + 1) % items.length;
+          render();
+        });
+
+        render();
+      })();
+    </script>
+    {% endif %}
   </body>
 </html>

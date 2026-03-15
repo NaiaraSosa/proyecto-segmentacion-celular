@@ -135,6 +135,90 @@ input[type="file"] {
   gap: 10px;
 }
 
+.page-results {
+  place-items: start center;
+}
+
+.panel-results {
+  width: min(1280px, 100%);
+}
+
+.viewer {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.viewer-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.viewer-title {
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.viewer-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.viewer-card {
+  background: #111728;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.viewer-card h2 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #c8d6fa;
+}
+
+.viewer-card img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #0d1220;
+  border: 1px solid #26324a;
+}
+
+.viewer-metrics dl {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.viewer-metrics div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid #25324c;
+  padding-bottom: 6px;
+}
+
+.viewer-metrics dt {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.viewer-metrics dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.actions-results {
+  margin-top: 16px;
+}
+
 .progress-overlay {
   position: fixed;
   inset: 0;
@@ -227,5 +311,14 @@ code {
   .panel {
     padding: 20px;
     border-radius: 14px;
+  }
+
+  .viewer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .viewer-nav {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }

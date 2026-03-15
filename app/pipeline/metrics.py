@@ -13,21 +13,17 @@ def compute_metrics(cells_lab: np.ndarray, parasites_lab: np.ndarray) -> Dict[st
 
     infected_cells, parasites_per_cell, unassigned_parasites = conteo_infeccion(cells_lab, parasites_lab)
 
-    #infection_rate = float(infected_cells / total_cells) if total_cells > 0 else 0.0
-    #avg_parasites_per_cell = float(total_parasites / total_cells) if total_cells > 0 else 0.0
-    #avg_parasites_per_infected_cell = (
-    #    float(total_parasites / infected_cells) if infected_cells > 0 else 0.0
-    #)
+    avg_parasites_per_infected_cell = (
+        float(total_parasites / infected_cells) if infected_cells > 0 else 0.0
+    )
 
     return {
         "total_celulas": total_cells,
         "total_parasitos": total_parasites,
         "celulas_infectadas": int(infected_cells),
-        "parasitos_no_asignados": int(unassigned_parasites),
+        #"parasitos_no_asignados": int(unassigned_parasites),
         "parasitos_por_celula": parasites_per_cell.tolist(),
-        #"tasa_infeccion": infection_rate,
-        #"promedio_parasitos_celula": avg_parasites_per_cell,
-        #"promedio_parasitos_celula_infectada": avg_parasites_per_infected_cell,
+        "promedio_parasitos_por_celula": avg_parasites_per_infected_cell,
     }
 
 
@@ -41,18 +37,15 @@ def summarize_job(image_metrics: list[Dict[str, object]]) -> Dict[str, object]:
             "total_celulas": 0,
             "total_parasitos": 0,
             "total_celulas_infectadas": 0,
-            #"tasa_infeccion_promedio": 0.0,
         }
 
     total_cells = int(sum(int(m.get("total_celulas", 0)) for m in image_metrics))
     total_parasites = int(sum(int(m.get("total_parasitos", 0)) for m in image_metrics))
     total_infected_cells = int(sum(int(m.get("celulas_infectadas", 0)) for m in image_metrics))
-    # mean_infection_rate = float(np.mean([float(m.get("tasa_infeccion_promedio", 0.0)) for m in image_metrics]))
 
     return {
         "imagenes_procesadas": len(image_metrics),
         "total_celulas": total_cells,
         "total_parasitos": total_parasites,
         "total_celulas_infectadas": total_infected_cells,
-        # "tasa_infeccion_promedio": mean_infection_rate,
     }
