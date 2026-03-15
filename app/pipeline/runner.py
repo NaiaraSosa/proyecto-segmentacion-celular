@@ -1,5 +1,4 @@
-from __future__ import annotations
-
+﻿from __future__ import annotations
 import os
 import shutil
 import zipfile
@@ -73,7 +72,7 @@ def _write_metrics_excel(path: Path, summary: dict[str, object], image_metrics: 
             "total_celulas",
             "total_parasitos",
             "celulas_infectadas",
-            "parasitos_no_asignados",
+            #"parasitos_no_asignados",
             "promedio_parasitos_por_celula",
             "parasitos_por_celula",
         ]
@@ -87,7 +86,7 @@ def _write_metrics_excel(path: Path, summary: dict[str, object], image_metrics: 
                 int(m.get("total_celulas", 0)),
                 int(m.get("total_parasitos", 0)),
                 int(m.get("celulas_infectadas", 0)),
-                int(m.get("parasitos_no_asignados", 0)),
+                #int(m.get("parasitos_no_asignados", 0)),
                 float(m.get("promedio_parasitos_por_celula", 0.0)),
                 ";".join(str(x) for x in m.get("parasitos_por_celula", [])),
             ]
@@ -197,7 +196,7 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
                     "total_celulas": int(metrics.get("total_celulas", 0)),
                     "total_parasitos": int(metrics.get("total_parasitos", 0)),
                     "celulas_infectadas": int(metrics.get("celulas_infectadas", 0)),
-                    "parasitos_no_asignados": int(metrics.get("parasitos_no_asignados", 0)),
+                    #"parasitos_no_asignados": int(metrics.get("parasitos_no_asignados", 0)),
                 },
             }
         )
@@ -219,4 +218,4 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
             if p.is_file():
                 zf.write(p, arcname=str(p.relative_to(job_output_dir)))
 
-    return zip_path, preview_items
+    return zip_path, all_metrics
