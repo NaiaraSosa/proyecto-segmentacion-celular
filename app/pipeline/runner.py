@@ -21,6 +21,8 @@ from app.pipeline.stardist import segment_parasites
 IMAGE_EXTS = set(IO_IMAGE_EXTS) | {".zip"}
 CELL_MIN_AREA = int(os.getenv("CELL_MIN_AREA", "500"))
 PARASITE_MAX_AREA = int(os.getenv("PARASITE_MAX_AREA", "500"))
+PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "40"))
+PARASITE_ASSIGN_THRESHOLD = float(os.getenv("PARASITE_ASSIGN_THRESHOLD", "0.5"))
 
 
 def _resolve_input_images(uploaded: Path, job_temp_dir: Path) -> list[Path]:
@@ -51,7 +53,15 @@ def _write_metrics_excel(path: Path, summary: dict[str, object], image_metrics: 
     ws_summary = wb.active
     ws_summary.title = "Generales"
     ws_summary.append(
-        ["job_id", "imagenes_procesadas", "total_celulas", "total_parasitos", "total_celulas_infectadas"]
+        [
+            "job_id",
+            "imagenes_procesadas",
+            "total_celulas",
+            "total_parasitos",
+            "total_parasitos_asignados",
+            "total_parasitos_no_asignados",
+            "total_celulas_infectadas",
+        ]
     )
     ws_summary.append(
         [
@@ -59,6 +69,8 @@ def _write_metrics_excel(path: Path, summary: dict[str, object], image_metrics: 
             int(summary.get("imagenes_procesadas", 0)),
             int(summary.get("total_celulas", 0)),
             int(summary.get("total_parasitos", 0)),
+            int(summary.get("total_parasitos_asignados", 0)),
+            int(summary.get("total_parasitos_no_asignados", 0)),
             int(summary.get("total_celulas_infectadas", 0)),
         ]
     )
@@ -71,8 +83,10 @@ def _write_metrics_excel(path: Path, summary: dict[str, object], image_metrics: 
             "source_filename",
             "total_celulas",
             "total_parasitos",
+            "parasitos_asignados",
+            "parasitos_no_asignados",
             "celulas_infectadas",
-            #"parasitos_no_asignados",
+            "promedio_confianza_asignacion",
             "promedio_parasitos_por_celula",
             "parasitos_por_celula",
         ]
@@ -85,8 +99,10 @@ def _write_metrics_excel(path: Path, summary: dict[str, object], image_metrics: 
                 m.get("source_filename", ""),
                 int(m.get("total_celulas", 0)),
                 int(m.get("total_parasitos", 0)),
+                int(m.get("parasitos_asignados", 0)),
+                int(m.get("parasitos_no_asignados", 0)),
                 int(m.get("celulas_infectadas", 0)),
-                #int(m.get("parasitos_no_asignados", 0)),
+                float(m.get("promedio_confianza_asignacion", 0.0)),
                 float(m.get("promedio_parasitos_por_celula", 0.0)),
                 ";".join(str(x) for x in m.get("parasitos_por_celula", [])),
             ]
@@ -184,7 +200,12 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
             "job_id": job_id,
             "image_id": img_id,
             "source_filename": img_path.name,
-            **compute_metrics(cells_lab, parasites_lab),
+            **compute_metrics(
+                cells_lab,
+                parasites_lab,
+                assign_sigma=PARASITE_ASSIGN_SIGMA,
+                assign_threshold=PARASITE_ASSIGN_THRESHOLD,
+            ),
         }
         all_metrics.append(metrics)
 
@@ -196,7 +217,7 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
                     "total_celulas": int(metrics.get("total_celulas", 0)),
                     "total_parasitos": int(metrics.get("total_parasitos", 0)),
                     "celulas_infectadas": int(metrics.get("celulas_infectadas", 0)),
-                    #"parasitos_no_asignados": int(metrics.get("parasitos_no_asignados", 0)),
+                    "parasitos_no_asignados": int(metrics.get("parasitos_no_asignados", 0)),
                 },
             }
         )
