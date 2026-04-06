@@ -218,4 +218,4 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
             if p.is_file():
                 zf.write(p, arcname=str(p.relative_to(job_output_dir)))
 
-    return zip_path, all_metrics
+    return zip_path, preview_items
