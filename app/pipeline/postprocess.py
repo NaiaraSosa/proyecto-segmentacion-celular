@@ -89,87 +89,34 @@ def filter_parasites_by_area(parasites_lab: np.ndarray, max_area: int) -> np.nda
 
 def merge_parasites(parasites_lab: np.ndarray, merge_radius: int = 2) -> np.ndarray:
     """
-    Une parásitos cercanos para reducir doble conteo, limitando a máximo 2 parásitos por grupo.
+    Une parásitos cercanos para reducir doble conteo.
 
     Cuando StarDist detecta parásitos muy juntos, puede segmentarlos como
     objetos separados aunque sean el mismo parásito. Esta función los
-    agrupa solo en pares más cercanos, evitando merges de más de 2.
+    agrupa usando dilatación morfológica.
 
     Args:
         parasites_lab: Array 2D con máscaras de parásitos (IDs únicos).
-        merge_radius: Radio de proximidad en píxeles (default: 2).
-            Parásitos separados por ≤ 2*merge_radius se consideran para merge.
+        merge_radius: Radio de dilatación en píxeles (default: 2).
+            Parásitos separados por ≤ 2*radius se unen.
 
     Returns:
         Array 2D uint16 con parásitos fusionados. IDs re-etiquetados desde 1..N.
 
     Notes:
-        - Calcula centroides y distancias euclidianas
-        - Mergea iterativamente el par más cercano de singles
-        - Limita a máximo 2 parásitos por grupo para evitar sobre-merge
+        - Usa binary_dilation para "inflar" las máscaras
+        - Luego ndi_label para identificar componentes conectados
         - Reduce falsos positivos de segmentación por proximidad
+        - merge_radius=2 significa que parásitos separados por ≤4px se unen
     """
     if parasites_lab.size == 0 or int(parasites_lab.max()) == 0:
         return parasites_lab.astype(np.uint16, copy=False)
 
-    # Obtener IDs únicos de parásitos
-    parasite_ids = np.unique(parasites_lab[parasites_lab > 0])
-    if len(parasite_ids) <= 1:
-        return parasites_lab.astype(np.uint16, copy=False)
-
-    # Calcular centroides
-    centroids = {}
-    for pid in parasite_ids:
-        mask = parasites_lab == pid
-        cent = center_of_mass(mask)
-        centroids[pid] = np.array(cent)
-
-    # Grupos iniciales: cada parásito es su propio grupo
-    groups: Dict[int, list[int]] = {pid: [pid] for pid in parasite_ids}
-    threshold = 2 * merge_radius
-
-    # Iterativamente mergear pares más cercanos de singles
-    merged = True
-    while merged:
-        merged = False
-        min_dist = float('inf')
-        pair_to_merge = None
-
-        # Encontrar el par más cercano de grupos con len=1
-        single_groups = [gid for gid, g in groups.items() if len(g) == 1]
-        for i in range(len(single_groups)):
-            for j in range(i + 1, len(single_groups)):
-                gid1, gid2 = single_groups[i], single_groups[j]
-                dist = np.linalg.norm(centroids[gid1] - centroids[gid2])
-                if dist <= threshold and dist < min_dist:
-                    min_dist = dist
-                    pair_to_merge = (gid1, gid2)
-
-        if pair_to_merge:
-            gid1, gid2 = pair_to_merge
-            # Mergear: combinar grupos
-            groups[gid1].extend(groups[gid2])
-            del groups[gid2]
-            merged = True
-
-    # Crear nueva máscara con grupos merged
-    merged_lab = np.zeros_like(parasites_lab, dtype=np.uint16)
-    new_id = 1
-    for group in groups.values():
-        if len(group) > 1:
-            # Crear máscara unida para el grupo
-            combined_mask = np.zeros_like(parasites_lab, dtype=bool)
-            for pid in group:
-                combined_mask |= (parasites_lab == pid)
-            merged_lab[combined_mask] = new_id
-            new_id += 1
-        else:
-            # Single parásito
-            pid = group[0]
-            merged_lab[parasites_lab == pid] = new_id
-            new_id += 1
-
-    return merged_lab
+    bw = parasites_lab > 0
+    structure = np.ones((2 * merge_radius + 1, 2 * merge_radius + 1), dtype=bool)
+    bw_dil = binary_dilation(bw, structure=structure)
+    merged, _ = ndi_label(bw_dil)
+    return merged.astype(np.uint16, copy=False)
 
 
 def nearest_cell_distance(cells_lab: np.ndarray, pmask: np.ndarray) -> tuple[int, float]:
