@@ -46,6 +46,7 @@
                 <div><dt>Células infectadas</dt><dd id="m-celulas-infectadas">0</dd></div>
                 <div><dt>Promedio parásitos por célula</dt><dd id="m-promedio-parasitos-por-celula">0</dd></div>
                 <div><dt>Parásitos por célula</dt><dd id="m-parasitos-por-celula">0</dd></div>
+                <div><dt>Parásitos no asignados</dt><dd id="m-parasitos-no-asignados">0</dd></div>
               </dl>
             </article>
           </div>
@@ -79,6 +80,7 @@
         const celulasInfectadasEl = document.getElementById("m-celulas-infectadas");
         const promedioParasitosPorCelulaEl = document.getElementById("m-promedio-parasitos-por-celula");
         const parasitosPorCelulaEl = document.getElementById("m-parasitos-por-celula");
+        const parasitosNoAsignadosEl = document.getElementById("m-parasitos-no-asignados");
 
         let idx = 0;
 
@@ -95,7 +97,7 @@
           celulasInfectadasEl.textContent = String(m.celulas_infectadas ?? 0);
           promedioParasitosPorCelulaEl.textContent = String(m.promedio_parasitos_por_celula ?? 0);
           parasitosPorCelulaEl.textContent = String(m.parasitos_por_celula ?? 0);
-      
+          parasitosNoAsignadosEl.textContent = String(m.parasitos_no_asignados ?? 0);
 
         }
 
