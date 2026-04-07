@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict
 
 import numpy as np
-from scipy.ndimage import binary_dilation, center_of_mass, distance_transform_edt, label as ndi_label
+from scipy.ndimage import binary_dilation, distance_transform_edt, label as ndi_label
 
 
 def compute_instance_areas(labels: np.ndarray) -> np.ndarray:
@@ -89,25 +89,25 @@ def filter_parasites_by_area(parasites_lab: np.ndarray, max_area: int) -> np.nda
 
 def merge_parasites(parasites_lab: np.ndarray, merge_radius: int = 2) -> np.ndarray:
     """
-    Une parásitos cercanos para reducir doble conteo.
+    Une parásitos cercanos para reducir doble conteo, ajustando conteo por merged.
 
     Cuando StarDist detecta parásitos muy juntos, puede segmentarlos como
     objetos separados aunque sean el mismo parásito. Esta función los
-    agrupa usando dilatación morfológica.
+    agrupa usando dilatación, pero ajusta el conteo: si N parásitos se mergean,
+    cuentan como N-1 en lugar de 1.
 
     Args:
         parasites_lab: Array 2D con máscaras de parásitos (IDs únicos).
         merge_radius: Radio de dilatación en píxeles (default: 2).
-            Parásitos separados por ≤ 2*radius se unen.
+            Parásitos separados por ≤ 2*radius se consideran para merge.
 
     Returns:
-        Array 2D uint16 con parásitos fusionados. IDs re-etiquetados desde 1..N.
+        Array 2D uint16 con parásitos fusionados y conteo ajustado. IDs re-etiquetados desde 1..N.
 
     Notes:
-        - Usa binary_dilation para "inflar" las máscaras
-        - Luego ndi_label para identificar componentes conectados
-        - Reduce falsos positivos de segmentación por proximidad
-        - merge_radius=2 significa que parásitos separados por ≤4px se unen
+        - Usa binary_dilation para encontrar parásitos cercanos
+        - Mergea completamente, pero ajusta IDs: N parásitos merged = N-1 IDs asignados
+        - Ejemplo: 3 parásitos merged → cuentan como 2 en lugar de 1
     """
     if parasites_lab.size == 0 or int(parasites_lab.max()) == 0:
         return parasites_lab.astype(np.uint16, copy=False)
@@ -116,7 +116,36 @@ def merge_parasites(parasites_lab: np.ndarray, merge_radius: int = 2) -> np.ndar
     structure = np.ones((2 * merge_radius + 1, 2 * merge_radius + 1), dtype=bool)
     bw_dil = binary_dilation(bw, structure=structure)
     merged, _ = ndi_label(bw_dil)
-    return merged.astype(np.uint16, copy=False)
+
+    # Para cada región merged, contar cuántos parásitos originales contiene
+    result = np.zeros_like(parasites_lab, dtype=np.uint16)
+    merged_id = 1
+
+    for region_id in np.unique(merged[merged > 0]):
+        # Máscara de la región merged
+        region_mask = merged == region_id
+        # Parásitos originales dentro de esta región
+        original_ids = np.unique(parasites_lab[region_mask])
+        original_ids = original_ids[original_ids > 0]  # Excluir fondo
+
+        num_originals = len(original_ids)
+        
+        if num_originals <= 2:
+            # Mergear normalmente: 2 parásitos = 1 ID (conteo correcto)
+            result[region_mask] = merged_id
+            merged_id += 1
+        else:
+            # Mergear pero contar como N-1: 3 parásitos = 2 IDs (cuenta como 2)
+            # Asignar los primeros N-1 parásitos originales con IDs diferentes
+            for oid in original_ids[:num_originals - 1]:
+                result[parasites_lab == oid] = merged_id
+                merged_id += 1
+            # El último parásito original se suma al último ID asignado
+            last_mask = parasites_lab == original_ids[-1]
+            if result[last_mask].max() == 0:  # Si no fue asignado aún
+                result[last_mask] = merged_id - 1
+
+    return result
 
 
 def nearest_cell_distance(cells_lab: np.ndarray, pmask: np.ndarray) -> tuple[int, float]:
