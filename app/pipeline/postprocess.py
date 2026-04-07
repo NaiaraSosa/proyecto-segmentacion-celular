@@ -96,7 +96,7 @@ def assign_parasites_with_confidence(
     p_total = int(parasites_lab.max())
     counts = np.zeros(c_total, dtype=int)
     confidences: list[float] = []
-    confident_confidences: list[float] = []
+    # confident_confidences: list[float] = []
     assigned_parasites = 0
     unassigned_parasites = 0
 
@@ -106,8 +106,8 @@ def assign_parasites_with_confidence(
             "parasites_per_cell": counts,
             "assigned_parasites": assigned_parasites,
             "unassigned_parasites": p_total,
-            "mean_assignment_confidence": 0.0,
-            "mean_confident_assignment_confidence": 0.0,
+            #"mean_assignment_confidence": 0.0,
+            #"mean_confident_assignment_confidence": 0.0,
         }
 
     safe_sigma = max(float(sigma), 1e-6)
@@ -136,15 +136,15 @@ def assign_parasites_with_confidence(
         if confidence >= threshold:
             counts[cid - 1] += 1
             assigned_parasites += 1
-            confident_confidences.append(confidence)
+            #confident_confidences.append(confidence)
         else:
             unassigned_parasites += 1
 
     infected_cells = int((counts > 0).sum())
     mean_assignment_confidence = float(np.mean(confidences)) if confidences else 0.0
-    mean_confident_assignment_confidence = (
-        float(np.mean(confident_confidences)) if confident_confidences else 0.0
-    )
+    #mean_confident_assignment_confidence = (
+    #    float(np.mean(confident_confidences)) if confident_confidences else 0.0
+    #)
 
     return {
         "infected_cells": infected_cells,
@@ -152,5 +152,5 @@ def assign_parasites_with_confidence(
         "assigned_parasites": assigned_parasites,
         "unassigned_parasites": unassigned_parasites,
         "mean_assignment_confidence": mean_assignment_confidence,
-        "mean_confident_assignment_confidence": mean_confident_assignment_confidence,
+        #"mean_confident_assignment_confidence": mean_confident_assignment_confidence,
     }

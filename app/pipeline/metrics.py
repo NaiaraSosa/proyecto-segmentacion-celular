@@ -42,9 +42,9 @@ def compute_metrics(
         "parasitos_no_asignados": unassigned_parasites,
         "celulas_infectadas": infected_cells,
         "promedio_confianza_asignacion": float(assignment["mean_assignment_confidence"]),
-        "promedio_confianza_asignaciones_confiables": float(
-            assignment["mean_confident_assignment_confidence"]
-        ),
+        #"promedio_confianza_asignaciones_confiables": float(
+        #    assignment["mean_confident_assignment_confidence"]
+        #),
         "promedio_parasitos_por_celula": avg_parasites_per_infected_cell,
         "parasitos_por_celula": parasites_per_cell.tolist(),
     }

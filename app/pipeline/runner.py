@@ -218,6 +218,8 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
                     "total_parasitos": int(metrics.get("total_parasitos", 0)),
                     "celulas_infectadas": int(metrics.get("celulas_infectadas", 0)),
                     "parasitos_no_asignados": int(metrics.get("parasitos_no_asignados", 0)),
+                    "promedio_parasitos_por_celula": int(round(metrics.get("promedio_parasitos_por_celula", 0.0))),
+                    "parasitos_por_celula": metrics.get("parasitos_por_celula", []),
                 },
             }
         )

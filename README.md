@@ -64,6 +64,8 @@ Desde la carpeta `proyecto-segmentacion-celular`:
 ```bash
 export CELL_MIN_AREA=500
 export PARASITE_MAX_AREA=400
+export PARASITE_ASSIGN_SIGMA=150
+export PARASITE_ASSIGN_THRESHOLD=0.2
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
 ```
 
