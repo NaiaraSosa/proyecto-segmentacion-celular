@@ -24,11 +24,10 @@ def _get_cellpose_model():
 
 def segment_cells(
     img2d: np.ndarray,
-    flow_threshold: float = 0.4,
-    cellprob_threshold: float = 0.2,
-    min_size: int = 100,
-    tile_norm_blocksize: int = 100,
-    gpu: bool = True,
+    flow_threshold: float = 0.0,    
+    cellprob_threshold: float = 0.0,
+    min_size: int = 200,
+    tile_norm_blocksize: int = 0.0,
 ) -> np.ndarray:
     """
     Segmenta células en una imagen 2D usando el modelo Cellpose.
@@ -53,12 +52,11 @@ def segment_cells(
     """
     model = _get_cellpose_model()
 
-    masks = model.eval(
+    masks, flows, styles= model.eval(
         img2d,
         flow_threshold=flow_threshold,
         cellprob_threshold=cellprob_threshold,
         min_size=min_size,
         normalize={"tile_norm_blocksize": tile_norm_blocksize},
-        gpu=gpu,
     )
     return masks.astype(np.int32, copy=False)
