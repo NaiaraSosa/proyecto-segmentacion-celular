@@ -25,24 +25,39 @@ _PALETTE = np.array(
 )
 
 
-def build_input_preview(img2d: np.ndarray) -> np.ndarray:
+def _apply_viridis_colormap(gray: np.ndarray) -> np.ndarray:
     """
-    Crea una preview RGB en escala de grises desde una imagen 2D monocromática.
+    Aplica un colormap tipo viridis a una imagen de una sola banda.
 
-    Diseñado para visualizar imágenes de microscopía que son inherentemente
-    monocromáticas (fluorescencia, brightfield) pero necesitan ser mostradas
-    como RGB para compatibilidad con formatos de imagen estándar.
+    El resultado es un array RGB uint8 que mapea valores de intensidad
+    en [0, 255] a una escala de color similar a viridis.
+    """
+    x = gray.astype(np.float32) / 255.0
+    r = np.interp(x, [0.0, 0.25, 0.5, 0.75, 1.0], [0.267, 0.229, 0.127, 0.369, 0.993])
+    g = np.interp(x, [0.0, 0.25, 0.5, 0.75, 1.0], [0.004, 0.322, 0.569, 0.788, 0.906])
+    b = np.interp(x, [0.0, 0.25, 0.5, 0.75, 1.0], [0.329, 0.545, 0.550, 0.382, 0.143])
+    rgb = np.stack([r, g, b], axis=-1)
+    return (np.clip(rgb, 0.0, 1.0) * 255).astype(np.uint8)
+
+
+def build_input_preview(img2d: np.ndarray, colormap: str | None = None) -> np.ndarray:
+    """
+    Crea una preview RGB desde una imagen 2D monocromática.
+
+    Por defecto crea una preview en escala de grises, pero también puede usar
+    un colormap tipo viridis para mejorar la visualización.
 
     Args:
         img2d: Array 2D NumPy (Y, X) con valores de intensidad.
+        colormap: Nombre del colormap a aplicar. Soporta None o 'viridis'.
 
     Returns:
-        Array RGB uint8 (Y, X, 3) con los 3 canales idénticos (escala de grises).
+        Array RGB uint8 (Y, X, 3).
 
     Notes:
         - Ajuste de contraste: Usa percentiles 1-99 para ignorar outliers
         - Normalización: Escala al rango 0-255
-        - RGB: Crea 3 canales idénticos para formato RGB estándar
+        - Si colormap='viridis', usa una paleta de color perceptualmente agradable
     """
     x = img2d.astype(np.float32, copy=False)
     p1, p99 = np.percentile(x, [1, 99])
@@ -51,6 +66,10 @@ def build_input_preview(img2d: np.ndarray) -> np.ndarray:
     else:
         x = np.zeros_like(x, dtype=np.float32)
     gray = (x * 255).astype(np.uint8)
+
+    if colormap == "viridis":
+        return _apply_viridis_colormap(gray)
+
     return np.stack([gray, gray, gray], axis=-1)
 
 
