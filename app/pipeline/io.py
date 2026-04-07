@@ -10,7 +10,22 @@ PathLike = Union[str, Path]
 IMAGE_EXTS = {".tif", ".tiff", ".czi"}
 
 def load_image(path: PathLike) -> np.ndarray:
-    """Carga imagen TIFF/CZI y devuelve array numpy crudo."""
+    """
+    Carga una imagen desde archivo TIFF o CZI y devuelve un array NumPy crudo.
+
+    Args:
+        path: Ruta al archivo de imagen (str o Path).
+
+    Returns:
+        Array NumPy con la imagen cargada. Las dimensiones dependen del archivo:
+        - TIFF: Puede ser 2D (Y, X), 3D (Y, X, C) o más
+        - CZI: Típicamente multidimensional con canales, Z-stacks, tiempo
+
+    Raises:
+        ValueError: Si la extensión no es soportada o hay error de carga.
+        FileNotFoundError: Si el archivo no existe.
+        Exception: Errores específicos de las librerías de carga.
+    """
     p = Path(path)
     ext = p.suffix.lower()
 
@@ -33,7 +48,27 @@ def extract_2d_frame(
     t: int = 0,
 ) -> np.ndarray:
     """
-    Intenta obtener una imagen 2D usable desde arrays con dimensiones variadas.
+    Extrae un frame 2D (Y, X) desde un array multidimensional de imagen.
+
+    Diseñado para manejar formatos comunes de microscopía que pueden tener
+    múltiples dimensiones: canales (C), profundidad Z, tiempo (T), etc.
+    Intenta inferir automáticamente el layout dimensional y seleccionar
+    el frame apropiado.
+
+    Args:
+        arr: Array NumPy multidimensional cargado desde imagen.
+        channel: Índice del canal a seleccionar (default: 0).
+        z: Índice Z-stack a seleccionar (default: 0).
+        t: Índice de tiempo a seleccionar (default: 0).
+
+    Returns:
+        Array 2D (Y, X) listo para procesamiento. Si ya es 2D, lo devuelve tal cual.
+
+    Notes:
+        - Asume layouts comunes: (Y,X,C), (C,Y,X), (Z,Y,X), (T,Z,C,Y,X), etc.
+        - Para arrays con >3 dimensiones, recorta iterativamente al índice 0
+          hasta llegar a 3D, luego aplica lógica de 3D.
+        - Usa np.squeeze() para eliminar dimensiones singleton.
     """
     x = np.asarray(arr)
     x = np.squeeze(x)
@@ -42,13 +77,13 @@ def extract_2d_frame(
         return x
 
     if x.ndim == 3:
-        # (Y, X, C)
+        # (Y, X, C) - último eje pequeño = canales
         if x.shape[-1] <= 4:
             return x[:, :, channel if channel < x.shape[-1] else 0]
-        # (C, Y, X)
+        # (C, Y, X) - primer eje pequeño = canales
         if x.shape[0] <= 4:
             return x[channel if channel < x.shape[0] else 0, :, :]
-        # (Z, Y, X) o similar
+        # (Z, Y, X) o similar - asume primer eje = Z
         return x[z if z < x.shape[0] else 0, :, :]
 
     # Para ndim >= 4: recorta ejes "extra" al índice 0 hasta llegar a 3D o 2D
@@ -59,7 +94,25 @@ def extract_2d_frame(
 
 
 def load_image_2d(path: PathLike) -> np.ndarray:
-    """Carga archivo y devuelve frame 2D listo para pipeline."""
+    """
+    Carga un archivo de imagen y devuelve un frame 2D listo para el pipeline.
+
+    Combina load_image() y extract_2d_frame() para proporcionar una interfaz
+    simple que siempre devuelve una imagen 2D (Y, X) independientemente del
+    formato multidimensional del archivo original.
+
+    Args:
+        path: Ruta al archivo de imagen (str o Path).
+
+    Returns:
+        Array 2D NumPy (Y, X) con dtype apropiado para procesamiento.
+        Típicamente uint16 para imágenes de microscopía.
+
+    Raises:
+        ValueError: Si la extensión no es soportada o hay error de carga.
+        FileNotFoundError: Si el archivo no existe.
+    """
     raw = load_image(path)
     img2d = extract_2d_frame(raw)
     return img2d
+    

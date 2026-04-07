@@ -16,7 +16,7 @@ PREVIEW_FILES = {"input_preview.png", "cell_mask_preview.png", "parasite_mask_pr
 @router.post("/upload")
 async def upload_file(request: Request, file: UploadFile = File(...)):
     if not file.filename:
-        raise HTTPException(status_code=400, detail="Archivo invalido")
+        raise HTTPException(status_code=400, detail="Archivo inválido")
 
     job_id = create_job()
     job_upload_dir = settings.uploads_dir / job_id

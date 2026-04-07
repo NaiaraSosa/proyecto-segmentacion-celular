@@ -4,7 +4,7 @@ from typing import Dict
 
 import numpy as np
 
-from app.pipeline.postprocess import assign_parasites_with_confidence
+from app.pipeline.postprocess import assign_parasites
 
 
 def compute_metrics(
@@ -14,12 +14,39 @@ def compute_metrics(
     assign_threshold: float = 0.5,
 ) -> Dict[str, object]:
     """
-    Calcula metricas principales por imagen a partir de mascaras de instancias.
+    Calcula métricas principales por imagen a partir de máscaras de instancias.
+
+    Analiza las máscaras de células y parásitos para generar estadísticas
+    cuantitativas del experimento: conteos, asignaciones, promedios, etc.
+
+    Args:
+        cells_lab: Array 2D con máscaras de células (IDs únicos).
+        parasites_lab: Array 2D con máscaras de parásitos (IDs únicos).
+        assign_sigma: Parámetro sigma para decaimiento exponencial en asignación
+            (default: 40.0 píxeles).
+        assign_threshold: Umbral de confianza para considerar asignación válida
+            (default: 0.5).
+
+    Returns:
+        Dict con métricas por imagen:
+        - total_celulas: Número total de células detectadas
+        - total_parasitos: Número total de parásitos detectados
+        - parasitos_asignados: Parásitos asignados a células con confianza ≥ threshold
+        - parasitos_no_asignados: Parásitos sin asignación confiable
+        - celulas_infectadas: Células con al menos un parásito asignado
+        - promedio_confianza_asignacion: Confianza promedio de todas las asignaciones
+        - promedio_parasitos_por_celula: Promedio de parásitos por célula infectada
+        - parasitos_por_celula: Lista con conteo de parásitos por célula
+
+    Notes:
+        - Usa assign_parasites_with_confidence para asignación inteligente
+        - Asignación considera solapamiento directo (confianza=1.0) y proximidad
+        - Threshold filtra asignaciones poco confiables como "no asignadas"
     """
     total_cells = int(cells_lab.max()) if cells_lab.size else 0
     total_parasites = int(parasites_lab.max()) if parasites_lab.size else 0
 
-    assignment = assign_parasites_with_confidence(
+    assignment = assign_parasites(
         cells_lab,
         parasites_lab,
         sigma=assign_sigma,
@@ -52,7 +79,23 @@ def compute_metrics(
 
 def summarize_job(image_metrics: list[Dict[str, object]]) -> Dict[str, object]:
     """
-    Agrega metricas a nivel job.
+    Agrega métricas a nivel de job completo.
+
+    Suma todas las métricas individuales de cada imagen para obtener
+    estadísticas globales del experimento/job.
+
+    Args:
+        image_metrics: Lista de dicts con métricas por imagen
+            (resultado de compute_metrics para cada imagen).
+
+    Returns:
+        Dict con métricas agregadas del job:
+        - imagenes_procesadas: Número total de imágenes analizadas
+        - total_celulas: Suma de células en todas las imágenes
+        - total_parasitos: Suma de parásitos en todas las imágenes
+        - total_parasitos_asignados: Suma de parásitos asignados
+        - total_parasitos_no_asignados: Suma de parásitos no asignados
+        - total_celulas_infectadas: Suma de células infectadas
     """
     if not image_metrics:
         return {

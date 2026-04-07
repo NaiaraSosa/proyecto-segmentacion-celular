@@ -26,6 +26,24 @@ _PALETTE = np.array(
 
 
 def build_input_preview(img2d: np.ndarray) -> np.ndarray:
+    """
+    Crea una preview RGB en escala de grises desde una imagen 2D monocromática.
+
+    Diseñado para visualizar imágenes de microscopía que son inherentemente
+    monocromáticas (fluorescencia, brightfield) pero necesitan ser mostradas
+    como RGB para compatibilidad con formatos de imagen estándar.
+
+    Args:
+        img2d: Array 2D NumPy (Y, X) con valores de intensidad.
+
+    Returns:
+        Array RGB uint8 (Y, X, 3) con los 3 canales idénticos (escala de grises).
+
+    Notes:
+        - Ajuste de contraste: Usa percentiles 1-99 para ignorar outliers
+        - Normalización: Escala al rango 0-255
+        - RGB: Crea 3 canales idénticos para formato RGB estándar
+    """
     x = img2d.astype(np.float32, copy=False)
     p1, p99 = np.percentile(x, [1, 99])
     if p99 > p1:
@@ -37,6 +55,25 @@ def build_input_preview(img2d: np.ndarray) -> np.ndarray:
 
 
 def build_instance_preview(labels: np.ndarray) -> np.ndarray:
+    """
+    Crea una preview RGB coloreada desde máscaras de segmentación.
+
+    Convierte máscaras con IDs únicos (cada instancia tiene un número)
+    en una imagen RGB donde cada instancia tiene un color único.
+    Útil para visualizar resultados de segmentación de células/parásitos.
+
+    Args:
+        labels: Array 2D int con IDs de instancias (0 = fondo, 1,2,3... = objetos).
+
+    Returns:
+        Array RGB uint8 (Y, X, 3) con colores asignados por instancia.
+
+    Notes:
+        - Usa paleta de 12 colores predefinidos
+        - Colores se repiten cíclicamente: instancia N usa color N % 12
+        - Fondo (ID=0) permanece negro
+        - Facilita identificación visual de objetos segmentados
+    """
     if labels.size == 0:
         return np.zeros((1, 1, 3), dtype=np.uint8)
 
