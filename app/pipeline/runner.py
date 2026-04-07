@@ -15,13 +15,20 @@ from app.pipeline.io import IMAGE_EXTS as IO_IMAGE_EXTS
 from app.pipeline.io import load_image_2d
 from app.pipeline.metrics import compute_metrics, summarize_job
 from app.pipeline.previews import build_input_preview, build_instance_preview, save_preview
-from app.pipeline.postprocess import filter_cells_by_area, filter_parasites_by_area, merge_parasites
+from app.pipeline.postprocess import (
+    compute_instance_areas,
+    filter_cells_by_area,
+    filter_parasites_by_area,
+    merge_parasites,
+)
 from app.pipeline.stardist import segment_parasites
 
 IMAGE_EXTS = set(IO_IMAGE_EXTS) | {".zip"}
 CELL_MIN_AREA = int(os.getenv("CELL_MIN_AREA", "500"))
+CELL_MIN_AREA_PERCENTILE = float(os.getenv("CELL_MIN_AREA_PERCENTILE", "10"))
 PARASITE_MAX_AREA = int(os.getenv("PARASITE_MAX_AREA", "500"))
-PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "120"))
+PARASITE_MAX_AREA_PERCENTILE = float(os.getenv("PARASITE_MAX_AREA_PERCENTILE", "90"))
+PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "150"))
 PARASITE_ASSIGN_THRESHOLD = float(os.getenv("PARASITE_ASSIGN_THRESHOLD", "0.5"))
 
 
@@ -234,14 +241,28 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
         img_out = _convert_to_tiff(img2d)
         tifffile.imwrite(str(folder / "input.tiff"), img_out)
 
-        preview = build_input_preview(img2d)
+        preview = build_input_preview(img2d, colormap="viridis")
         save_preview(folder / "input_preview.png", preview)
 
         cells_lab = segment_cells(img2d)
-        cells_lab = filter_cells_by_area(cells_lab, min_area=CELL_MIN_AREA)
+        cell_areas = compute_instance_areas(cells_lab)
+        adaptive_cell_min = CELL_MIN_AREA
+        if cell_areas.size > 0:
+            adaptive_cell_min = max(
+                CELL_MIN_AREA,
+                int(np.percentile(cell_areas, CELL_MIN_AREA_PERCENTILE)),
+            )
+        cells_lab = filter_cells_by_area(cells_lab, min_area=adaptive_cell_min)
 
         parasites_lab, _ = segment_parasites(img2d)
-        parasites_lab = filter_parasites_by_area(parasites_lab, max_area=PARASITE_MAX_AREA)
+        parasite_areas = compute_instance_areas(parasites_lab)
+        adaptive_parasite_max = PARASITE_MAX_AREA
+        if parasite_areas.size > 0:
+            adaptive_parasite_max = min(
+                PARASITE_MAX_AREA,
+                int(np.percentile(parasite_areas, PARASITE_MAX_AREA_PERCENTILE)),
+            )
+        parasites_lab = filter_parasites_by_area(parasites_lab, max_area=adaptive_parasite_max)
 
         parasites_lab = merge_parasites(parasites_lab, merge_radius=2)
 
