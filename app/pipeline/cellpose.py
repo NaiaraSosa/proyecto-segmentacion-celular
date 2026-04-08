@@ -26,7 +26,7 @@ def segment_cells(
     img2d: np.ndarray,
     flow_threshold: float = 0.0,    
     cellprob_threshold: float = 0.0,
-    min_size: int = 100,
+    min_size: int = 200,
     tile_norm_blocksize: int = 0.0,
 ) -> np.ndarray:
     """

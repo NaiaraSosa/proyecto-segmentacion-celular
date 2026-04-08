@@ -24,12 +24,12 @@ from app.pipeline.postprocess import (
 from app.pipeline.stardist import segment_parasites
 
 IMAGE_EXTS = set(IO_IMAGE_EXTS) | {".zip"}
-CELL_MIN_AREA = int(os.getenv("CELL_MIN_AREA", "500"))
+CELL_MIN_AREA = int(os.getenv("CELL_MIN_AREA", "700"))
 #CELL_MIN_AREA_PERCENTILE = float(os.getenv("CELL_MIN_AREA_PERCENTILE", "10"))
 PARASITE_MAX_AREA = int(os.getenv("PARASITE_MAX_AREA", "500"))
 #PARASITE_MAX_AREA_PERCENTILE = float(os.getenv("PARASITE_MAX_AREA_PERCENTILE", "90"))
-PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "180"))
-PARASITE_ASSIGN_THRESHOLD = float(os.getenv("PARASITE_ASSIGN_THRESHOLD", "0.5"))
+PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "200"))
+PARASITE_ASSIGN_THRESHOLD = float(os.getenv("PARASITE_ASSIGN_THRESHOLD", "0.4"))
 
 
 def _resolve_input_images(uploaded: Path, job_temp_dir: Path) -> list[Path]:
@@ -245,7 +245,7 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
         save_preview(folder / "input_preview.png", preview)
 
         cells_lab = segment_cells(img2d)
-        save_preview(folder / "cell_mask_raw_preview.png", build_instance_preview(cells_lab))
+        #save_preview(folder / "cell_mask_raw_preview.png", build_instance_preview(cells_lab))
 
         #cell_areas = compute_instance_areas(cells_lab)
         adaptive_cell_min = CELL_MIN_AREA

@@ -87,7 +87,7 @@
         function render() {
           const item = items[idx];
           titleEl.textContent = `${item.title} (${idx + 1}/${items.length})`;
-          inputEl.src = item.input_url;
+          inputEl.src = item.input_infected_url || item.input_url;
           cellEl.src = item.cell_url;
           parasiteEl.src = item.parasite_url;
 

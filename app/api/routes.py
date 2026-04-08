@@ -10,7 +10,11 @@ from app.services.jobs import create_job
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
-PREVIEW_FILES = {"input_preview.png", "cell_mask_preview.png", "parasite_mask_preview.png"}
+PREVIEW_FILES = {
+    "input_preview.png", 
+    "infected_overlay.png",
+    "cell_mask_preview.png", 
+    "parasite_mask_preview.png"}
 
 
 @router.post("/upload")
@@ -42,6 +46,7 @@ def process_job(request: Request, job_id: str):
     for item in preview_items:
         folder_name = item.get("folder_name", "")
         item["input_url"] = f"/preview/{job_id}/{folder_name}/input_preview.png"
+        item["input_infected_url"] = f"/preview/{job_id}/{folder_name}/infected_overlay.png"
         item["cell_url"] = f"/preview/{job_id}/{folder_name}/cell_mask_preview.png"
         item["parasite_url"] = f"/preview/{job_id}/{folder_name}/parasite_mask_preview.png"
 
