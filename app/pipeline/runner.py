@@ -25,10 +25,10 @@ from app.pipeline.stardist import segment_parasites
 
 IMAGE_EXTS = set(IO_IMAGE_EXTS) | {".zip"}
 CELL_MIN_AREA = int(os.getenv("CELL_MIN_AREA", "500"))
-CELL_MIN_AREA_PERCENTILE = float(os.getenv("CELL_MIN_AREA_PERCENTILE", "25"))
+#CELL_MIN_AREA_PERCENTILE = float(os.getenv("CELL_MIN_AREA_PERCENTILE", "10"))
 PARASITE_MAX_AREA = int(os.getenv("PARASITE_MAX_AREA", "500"))
-PARASITE_MAX_AREA_PERCENTILE = float(os.getenv("PARASITE_MAX_AREA_PERCENTILE", "90"))
-PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "170"))
+#PARASITE_MAX_AREA_PERCENTILE = float(os.getenv("PARASITE_MAX_AREA_PERCENTILE", "90"))
+PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "180"))
 PARASITE_ASSIGN_THRESHOLD = float(os.getenv("PARASITE_ASSIGN_THRESHOLD", "0.5"))
 
 
@@ -245,23 +245,25 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
         save_preview(folder / "input_preview.png", preview)
 
         cells_lab = segment_cells(img2d)
-        cell_areas = compute_instance_areas(cells_lab)
+        save_preview(folder / "cell_mask_raw_preview.png", build_instance_preview(cells_lab))
+
+        #cell_areas = compute_instance_areas(cells_lab)
         adaptive_cell_min = CELL_MIN_AREA
-        if cell_areas.size > 0:
-            adaptive_cell_min = max(
-                CELL_MIN_AREA,
-                int(np.percentile(cell_areas, CELL_MIN_AREA_PERCENTILE)),
-            )
+        #if cell_areas.size > 0:
+        #    adaptive_cell_min = max(
+        #        CELL_MIN_AREA,
+        #        int(np.percentile(cell_areas, CELL_MIN_AREA_PERCENTILE)),
+        #    )
         cells_lab = filter_cells_by_area(cells_lab, min_area=adaptive_cell_min)
 
         parasites_lab, _ = segment_parasites(img2d)
-        parasite_areas = compute_instance_areas(parasites_lab)
+        #parasite_areas = compute_instance_areas(parasites_lab)
         adaptive_parasite_max = PARASITE_MAX_AREA
-        if parasite_areas.size > 0:
-            adaptive_parasite_max = min(
-                PARASITE_MAX_AREA,
-                int(np.percentile(parasite_areas, PARASITE_MAX_AREA_PERCENTILE)),
-            )
+        #if parasite_areas.size > 0:
+        #    adaptive_parasite_max = min(
+        #        PARASITE_MAX_AREA,
+        #        int(np.percentile(parasite_areas, PARASITE_MAX_AREA_PERCENTILE)),
+        #    )
         parasites_lab = filter_parasites_by_area(parasites_lab, max_area=adaptive_parasite_max)
 
         parasites_lab = merge_parasites(parasites_lab, merge_radius=2)

@@ -26,9 +26,9 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
 
     return templates.TemplateResponse(
+        request,
         "upload.html",
         {
-            "request": request,
             "job_id": job_id,
             "filename": file.filename,
         },
@@ -46,9 +46,9 @@ def process_job(request: Request, job_id: str):
         item["parasite_url"] = f"/preview/{job_id}/{folder_name}/parasite_mask_preview.png"
 
     return templates.TemplateResponse(
+        request,
         "processed.html",
         {
-            "request": request,
             "job_id": job_id,
             "zip_name": zip_path.name,
             "preview_items": preview_items,

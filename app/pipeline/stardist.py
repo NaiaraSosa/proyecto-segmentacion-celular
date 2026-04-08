@@ -26,7 +26,7 @@ def _get_stardist_model(model_name: str = _MODEL_NAME):
 def segment_parasites(
     img2d: np.ndarray,
     prob_thresh: float = 0.5,
-    nms_thresh: float = 0.15,
+    nms_thresh: float = 0.3,
     model_name: str = _MODEL_NAME,
 ):
     """

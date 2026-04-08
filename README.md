@@ -55,6 +55,8 @@ conda activate /rhoeql/lab/naiara/conda_envs/segapp_env
 pip install -U pip
 pip install -e .
 pip install "tensorflow-cpu==2.15.*"
+pip uninstall -y torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 ```
 
 ## Ejecutar la API
