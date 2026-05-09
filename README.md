@@ -83,7 +83,8 @@ La salida se guarda en:
 <output>/<job_id>/
   job_<job_id>/
     images/
-    metrics.csv
+    metricas_generales.csv
+    metricas_por_imagen.csv
   results_<job_id>.zip
 ```
 
@@ -162,12 +163,22 @@ data/
 7. Asignación parasito -> célula (solape, o celula más cercana si no hay solape). Opcionalmente se refina agrupando clusters de parásitos cercanos.
 8. Cálculo de métricas y export de resultados.
 
-## Métricas exportadas ```(metrics.csv)```
+## Métricas exportadas
+
+El ZIP incluye dos CSV principales para abrirlos mas claro en planilla:
+
+- `metricas_generales.csv`: resumen del job completo.
+- `metricas_por_imagen.csv`: una fila por imagen procesada.
+
+Los CSV se escriben con separador `;` para que Excel/planillas en configuraciones regionales en español los abran en columnas.
+
+Columnas principales:
+
 - total_celulas: número total de células detectadas.
 - total_parasitos: número total de parásitos detectados.
 - celulas_infectadas: células con al menos un parásito asignado.
 - parasitos_no_asignados: cantidad de parásitos que no pudieron asignarse a ninguna célula.
-- parasitos_por_celula = cantidad de parásitos asignados por célula.¨
+- parasitos_por_celula = cantidad de parásitos asignados por célula.
 
 ## Estructura del ZIP de salida
 
@@ -178,7 +189,8 @@ Por cada imagen:
 - parasite_mask.tiff: máscara de instancias de parásitos (StarDist).
 
 A nivel job:
-- metrics.csv: métricas generales y por imagen.
+- metricas_generales.csv: métricas generales del job.
+- metricas_por_imagen.csv: métricas por imagen.
 - results_<job_id>.zip: paquete final de resultados.
 
 **Git**

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 import csv
 import os
 import shutil
@@ -135,57 +135,75 @@ def _convert_to_tiff(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def _write_metrics_csv(path: Path, summary: dict[str, object], image_metrics: list[dict[str, object]]) -> None:
-    fields = [
-        "tipo",
+def _counts_to_csv_cell(values: object) -> str:
+    if isinstance(values, (list, tuple)):
+        return "|".join(str(x) for x in values)
+    return str(values or "")
+
+
+def _write_csv(path: Path, fields: list[str], rows: list[dict[str, object]]) -> None:
+    with path.open("w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(f, fieldnames=fields, delimiter=";")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _write_metrics_csvs(export_root: Path, summary: dict[str, object], image_metrics: list[dict[str, object]]) -> None:
+    general_fields = [
+        "job_id",
+        "imagenes_procesadas",
+        "total_celulas",
+        "total_parasitos",
+        "total_parasitos_asignados",
+        "total_parasitos_no_asignados",
+        "total_celulas_infectadas",
+        "promedio_parasitos_por_celula",
+    ]
+
+    general_row = {
+        "job_id": summary.get("job_id", ""),
+        "imagenes_procesadas": int(summary.get("imagenes_procesadas", 0)),
+        "total_celulas": int(summary.get("total_celulas", 0)),
+        "total_parasitos": int(summary.get("total_parasitos", 0)),
+        "total_parasitos_asignados": int(summary.get("total_parasitos_asignados", 0)),
+        "total_parasitos_no_asignados": int(summary.get("total_parasitos_no_asignados", 0)),
+        "total_celulas_infectadas": int(summary.get("total_celulas_infectadas", 0)),
+        "promedio_parasitos_por_celula": float(summary.get("promedio_parasitos_por_celula", 0.0)),
+    }
+    _write_csv(export_root / "metricas_generales.csv", general_fields, [general_row])
+
+    image_fields = [
         "job_id",
         "image_id",
         "source_filename",
-        "imagenes_procesadas",
         "total_celulas",
         "total_parasitos",
         "parasitos_asignados",
         "parasitos_no_asignados",
         "celulas_infectadas",
-        "total_parasitos_asignados",
-        "total_parasitos_no_asignados",
-        "total_celulas_infectadas",
         "promedio_parasitos_por_celula",
         "parasitos_por_celula",
     ]
+    image_rows = [
+        {
+            "job_id": m.get("job_id", ""),
+            "image_id": m.get("image_id", ""),
+            "source_filename": m.get("source_filename", ""),
+            "total_celulas": int(m.get("total_celulas", 0)),
+            "total_parasitos": int(m.get("total_parasitos", 0)),
+            "parasitos_asignados": int(m.get("parasitos_asignados", 0)),
+            "parasitos_no_asignados": int(m.get("parasitos_no_asignados", 0)),
+            "celulas_infectadas": int(m.get("celulas_infectadas", 0)),
+            "promedio_parasitos_por_celula": float(m.get("promedio_parasitos_por_celula", 0.0)),
+            "parasitos_por_celula": _counts_to_csv_cell(m.get("parasitos_por_celula", [])),
+        }
+        for m in image_metrics
+    ]
+    _write_csv(export_root / "metricas_por_imagen.csv", image_fields, image_rows)
 
-    with path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fields)
-        writer.writeheader()
-        writer.writerow(
-            {
-                "tipo": "general",
-                "job_id": summary.get("job_id", ""),
-                "imagenes_procesadas": int(summary.get("imagenes_procesadas", 0)),
-                "total_celulas": int(summary.get("total_celulas", 0)),
-                "total_parasitos": int(summary.get("total_parasitos", 0)),
-                "total_parasitos_asignados": int(summary.get("total_parasitos_asignados", 0)),
-                "total_parasitos_no_asignados": int(summary.get("total_parasitos_no_asignados", 0)),
-                "total_celulas_infectadas": int(summary.get("total_celulas_infectadas", 0)),
-            }
-        )
-
-        for m in image_metrics:
-            writer.writerow(
-                {
-                    "tipo": "imagen",
-                    "job_id": m.get("job_id", ""),
-                    "image_id": m.get("image_id", ""),
-                    "source_filename": m.get("source_filename", ""),
-                    "total_celulas": int(m.get("total_celulas", 0)),
-                    "total_parasitos": int(m.get("total_parasitos", 0)),
-                    "parasitos_asignados": int(m.get("parasitos_asignados", 0)),
-                    "parasitos_no_asignados": int(m.get("parasitos_no_asignados", 0)),
-                    "celulas_infectadas": int(m.get("celulas_infectadas", 0)),
-                    "promedio_parasitos_por_celula": float(m.get("promedio_parasitos_por_celula", 0.0)),
-                    "parasitos_por_celula": ";".join(str(x) for x in m.get("parasitos_por_celula", [])),
-                }
-            )
+    legacy_metrics = export_root / "metrics.csv"
+    if legacy_metrics.is_file():
+        legacy_metrics.unlink()
 
 
 def _build_infected_overlay(
@@ -236,7 +254,7 @@ def run_pipeline_from_input(
     job_output_dir: Path,
     job_temp_dir: Path,
     job_id: str,
-) -> tuple[Path, list[dict[str, object]]]:
+) -> tuple[Path, list[dict[str, object]], dict[str, object]]:
     input_path = Path(input_path)
     job_output_dir = Path(job_output_dir)
     job_temp_dir = Path(job_temp_dir)
@@ -321,6 +339,8 @@ def run_pipeline_from_input(
                     "total_parasitos": int(metrics.get("total_parasitos", 0)),
                     "celulas_infectadas": int(metrics.get("celulas_infectadas", 0)),
                     "parasitos_no_asignados": int(metrics.get("parasitos_no_asignados", 0)),
+                    "parasitos_asignados": int(metrics.get("parasitos_asignados", 0)),
+                    "promedio_parasitos_por_celula": float(metrics.get("promedio_parasitos_por_celula", 0.0)),
                     "parasitos_por_celula": metrics.get("parasitos_por_celula", []),
                 },
             }
@@ -335,7 +355,7 @@ def run_pipeline_from_input(
 
     summary = summarize_job(all_metrics)
     summary_row = {"job_id": job_id, **summary}
-    _write_metrics_csv(export_root / "metrics.csv", summary_row, all_metrics)
+    _write_metrics_csvs(export_root, summary_row, all_metrics)
 
     zip_path = job_output_dir / f"results_{job_id}.zip"
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
@@ -343,10 +363,10 @@ def run_pipeline_from_input(
             if p.is_file():
                 zf.write(p, arcname=str(p.relative_to(job_output_dir)))
 
-    return zip_path, preview_items
+    return zip_path, preview_items, summary_row
 
 
-def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
+def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]], dict[str, object]]:
     job_upload_dir = settings.uploads_dir / job_id
     job_output_dir = settings.outputs_dir / job_id
     job_temp_dir = settings.temp_dir / job_id

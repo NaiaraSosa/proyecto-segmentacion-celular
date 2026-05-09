@@ -110,6 +110,7 @@ def summarize_job(image_metrics: list[Dict[str, object]]) -> Dict[str, object]:
             "total_parasitos_asignados": 0,
             "total_parasitos_no_asignados": 0,
             "total_celulas_infectadas": 0,
+            "promedio_parasitos_por_celula": 0.0,
         }
 
     total_cells = int(sum(int(m.get("total_celulas", 0)) for m in image_metrics))
@@ -117,6 +118,9 @@ def summarize_job(image_metrics: list[Dict[str, object]]) -> Dict[str, object]:
     total_assigned = int(sum(int(m.get("parasitos_asignados", 0)) for m in image_metrics))
     total_unassigned = int(sum(int(m.get("parasitos_no_asignados", 0)) for m in image_metrics))
     total_infected_cells = int(sum(int(m.get("celulas_infectadas", 0)) for m in image_metrics))
+    avg_parasites_per_infected_cell = (
+        float(total_assigned / total_infected_cells) if total_infected_cells > 0 else 0.0
+    )
 
     return {
         "imagenes_procesadas": len(image_metrics),
@@ -125,4 +129,5 @@ def summarize_job(image_metrics: list[Dict[str, object]]) -> Dict[str, object]:
         "total_parasitos_asignados": total_assigned,
         "total_parasitos_no_asignados": total_unassigned,
         "total_celulas_infectadas": total_infected_cells,
+        "promedio_parasitos_por_celula": avg_parasites_per_infected_cell,
     }
