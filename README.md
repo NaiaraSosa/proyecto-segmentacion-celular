@@ -74,6 +74,7 @@ También se puede fijar un identificador de job:
 
 ```bash
 segmentacion process ./test-imgs --output ./data/outputs --job-id experimento_01
+segmentacion process /home/naiara/code/test-imgs --output /home/naiara/proyecto-segmentacion-celular/data/outputs --job-id experimento_01
 ```
 
 La salida se guarda en:

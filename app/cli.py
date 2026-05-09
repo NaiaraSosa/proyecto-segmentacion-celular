@@ -11,7 +11,7 @@ from app.core.config import ensure_dirs, settings
 
 app = typer.Typer(
     name="segmentacion",
-    help="Procesa imagenes de microscopia desde consola o levanta la webapp.",
+    help="Procesa imágenes de microscopía desde consola o levanta la webapp.",
     no_args_is_help=True,
 )
 
@@ -39,7 +39,7 @@ def process_images(
         typer.Option(
             "--output",
             "-o",
-            help="Directorio raiz donde se guardara la carpeta del job.",
+            help="Directorio raiz donde se guarda la carpeta del procesamiento.",
         ),
     ] = settings.outputs_dir,
     temp_dir: Annotated[
@@ -107,7 +107,7 @@ def run_webapp(
     ] = settings.app_port,
     reload: Annotated[
         bool,
-        typer.Option("--reload", help="Recargar automaticamente durante desarrollo."),
+        typer.Option("--reload", help="Recargar automáticamente durante desarrollo."),
     ] = False,
 ) -> None:
     ensure_dirs()
