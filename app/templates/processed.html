@@ -18,26 +18,6 @@
           <p><span>CSV</span> metricas_generales.csv / metricas_por_imagen.csv</p>
         </div>
 
-        {% set summary = summary_metrics or {} %}
-        <section class="results-tabs">
-          <div class="tab-nav" role="tablist" aria-label="Metricas del procesamiento">
-            <button id="tab-general" class="tab-button is-active" type="button" role="tab" aria-selected="true" aria-controls="panel-general" data-tab-target="panel-general">Generales</button>
-            <button id="tab-images" class="tab-button" type="button" role="tab" aria-selected="false" aria-controls="panel-images" data-tab-target="panel-images">Por imagen</button>
-          </div>
-
-          <section id="panel-general" class="tab-panel is-active" role="tabpanel" aria-labelledby="tab-general">
-            <dl class="summary-metrics">
-              <div><dt>Imagenes procesadas</dt><dd>{{ summary.get("imagenes_procesadas", 0) }}</dd></div>
-              <div><dt>Total celulas</dt><dd>{{ summary.get("total_celulas", 0) }}</dd></div>
-              <div><dt>Total parasitos</dt><dd>{{ summary.get("total_parasitos", 0) }}</dd></div>
-              <div><dt>Parasitos asignados</dt><dd>{{ summary.get("total_parasitos_asignados", 0) }}</dd></div>
-              <div><dt>Parasitos no asignados</dt><dd>{{ summary.get("total_parasitos_no_asignados", 0) }}</dd></div>
-              <div><dt>Celulas infectadas</dt><dd>{{ summary.get("total_celulas_infectadas", 0) }}</dd></div>
-              <div><dt>Promedio parasitos por celula</dt><dd>{{ "%.2f"|format(summary.get("promedio_parasitos_por_celula", 0.0)) }}</dd></div>
-            </dl>
-          </section>
-
-          <section id="panel-images" class="tab-panel" role="tabpanel" aria-labelledby="tab-images" hidden>
         {% if preview_items and preview_items|length > 0 %}
         <section class="viewer" aria-live="polite">
           <div class="viewer-nav">
@@ -75,8 +55,6 @@
         {% else %}
         <p class="muted">No hay previews disponibles para este job.</p>
         {% endif %}
-          </section>
-        </section>
 
         <div class="actions actions-results">
           <a href="/download/{{ job_id }}" class="btn btn-primary">Descargar ZIP</a>
@@ -84,28 +62,6 @@
         </div>
       </section>
     </main>
-
-    <script>
-      (() => {
-        const tabs = Array.from(document.querySelectorAll(".tab-button"));
-        const panels = Array.from(document.querySelectorAll(".tab-panel"));
-        tabs.forEach((tab) => {
-          tab.addEventListener("click", () => {
-            const targetId = tab.dataset.tabTarget;
-            tabs.forEach((item) => {
-              const isSelected = item === tab;
-              item.classList.toggle("is-active", isSelected);
-              item.setAttribute("aria-selected", String(isSelected));
-            });
-            panels.forEach((panel) => {
-              const isSelected = panel.id === targetId;
-              panel.classList.toggle("is-active", isSelected);
-              panel.hidden = !isSelected;
-            });
-          });
-        });
-      })();
-    </script>
 
     {% if preview_items and preview_items|length > 0 %}
     <script id="preview-data" type="application/json">{{ preview_items | tojson }}</script>
