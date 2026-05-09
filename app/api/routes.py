@@ -14,10 +14,8 @@ PREVIEW_FILES = {
     "input_preview.png", 
     "infected_overlay.png",
     "cell_mask_preview.png", 
-    "parasite_mask_preview.png",
-    "histograma_parasitos_por_celula.png",
+    "parasite_mask_preview.png"
 }
-JOB_PREVIEW_FILES = {"histograma_global_parasitos_por_celula.png"}
 
 
 @router.post("/upload")
@@ -52,7 +50,6 @@ def process_job(request: Request, job_id: str):
         item["input_infected_url"] = f"/preview/{job_id}/{folder_name}/infected_overlay.png"
         item["cell_url"] = f"/preview/{job_id}/{folder_name}/cell_mask_preview.png"
         item["parasite_url"] = f"/preview/{job_id}/{folder_name}/parasite_mask_preview.png"
-        item["histogram_url"] = f"/preview/{job_id}/{folder_name}/histograma_parasitos_por_celula.png"
 
     return templates.TemplateResponse(
         request,
@@ -62,23 +59,8 @@ def process_job(request: Request, job_id: str):
             "zip_name": zip_path.name,
             "preview_items": preview_items,
             "summary_metrics": summary_metrics,
-            "global_histogram_url": f"/preview/{job_id}/histograma_global_parasitos_por_celula.png",
         },
     )
-
-
-@router.get("/preview/{job_id}/{filename}")
-def get_job_preview(job_id: str, filename: str):
-    if filename not in JOB_PREVIEW_FILES:
-        raise HTTPException(status_code=404, detail="Preview no encontrado.")
-
-    export_root = settings.outputs_dir / job_id / f"job_{job_id}"
-    root_resolved = export_root.resolve()
-    target = (export_root / filename).resolve()
-    if target.parent != root_resolved or not target.exists():
-        raise HTTPException(status_code=404, detail="Preview no encontrado.")
-
-    return FileResponse(path=str(target), media_type="image/png")
 
 
 @router.get("/preview/{job_id}/{image_folder}/{filename}")
