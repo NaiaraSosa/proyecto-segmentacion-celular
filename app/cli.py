@@ -78,7 +78,7 @@ def process_images(
     try:
         from app.pipeline.runner import run_pipeline_from_input
 
-        zip_path, preview_items = run_pipeline_from_input(
+        zip_path, preview_items, _summary_metrics = run_pipeline_from_input(
             input_path=input_path,
             job_output_dir=job_output_dir,
             job_temp_dir=job_temp_dir,

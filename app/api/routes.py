@@ -41,7 +41,7 @@ async def upload_file(request: Request, file: UploadFile = File(...)):
 
 @router.post("/process/{job_id}")
 def process_job(request: Request, job_id: str):
-    zip_path, preview_items = run_pipeline(job_id)
+    zip_path, preview_items, summary_metrics = run_pipeline(job_id)
 
     for item in preview_items:
         folder_name = item.get("folder_name", "")
@@ -57,6 +57,7 @@ def process_job(request: Request, job_id: str):
             "job_id": job_id,
             "zip_name": zip_path.name,
             "preview_items": preview_items,
+            "summary_metrics": summary_metrics,
         },
     )
 
