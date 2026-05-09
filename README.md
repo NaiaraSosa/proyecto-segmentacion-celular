@@ -59,16 +59,48 @@ pip uninstall -y torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 ```
 
-## Ejecutar la API
+## Ejecutar desde consola
 
-Desde la carpeta `proyecto-segmentacion-celular`:
+La instalación editable crea el comando `segmentacion`.
+
+Procesar una imagen, un ZIP o un directorio local con imágenes:
+
+```bash
+segmentacion process ./test-imgs --output ./data/outputs
+```
+
+También se puede fijar un identificador de job:
+
+```bash
+segmentacion process ./test-imgs --output ./data/outputs --job-id experimento_01
+```
+
+La salida se guarda en:
+
+```text
+<output>/<job_id>/
+  job_<job_id>/
+    images/
+    metrics.xlsx
+  results_<job_id>.zip
+```
+
+La entrada puede ser:
+
+- una imagen `.tif`, `.tiff` o `.czi`
+- un `.zip` con imágenes soportadas
+- un directorio con imágenes soportadas, buscando recursivamente en subcarpetas
+
+## Ejecutar la webapp
+
+Desde la carpeta del proyecto:
 
 ```bash
 export CELL_MIN_AREA=500
 export PARASITE_MAX_AREA=400
 export PARASITE_ASSIGN_SIGMA=150
 export PARASITE_ASSIGN_THRESHOLD=0.2
-python -m uvicorn app.main:app --host 127.0.0.1 --port 8010
+segmentacion web --host 127.0.0.1 --port 8010
 ```
 
 URL local:
@@ -99,6 +131,7 @@ app/
   core/        # Configuracion general
   pipeline/    # Logica de procesamiento
   services/    # Utilidades de jobs/archivos
+  cli.py        # Entrada Typer para linea de comandos
   main.py      # Entrada de la app
 data/
   uploads/     # Archivos subidos por job
@@ -108,7 +141,7 @@ data/
 
 ## Flujo actual
 
-1. Carga de imagen (`.tif/.tiff/.czi`) desde archivo suelto o ZIP.
+1. Carga de imagen (`.tif/.tiff/.czi`) desde archivo suelto, ZIP o directorio.
 2. Segmentacion de células con Cellpose.
 3. Filtro de células por área mínima (`CELL_MIN_AREA`).
 4. Segmentación de parásitos con StarDist.
@@ -117,7 +150,7 @@ data/
 7. Asignación parasito -> célula (solape, o celula más cercana si no hay solape).
 8. Cálculo de métricas y export de resultados.
 
-## Métricas exportadas ```(metrics.json)```
+## Métricas exportadas ```(metrics.xlsx)```
 - total_celulas: número total de células detectadas.
 - total_parasitos: número total de parásitos detectados.
 - celulas_infectadas: células con al menos un parásito asignado.
@@ -127,14 +160,13 @@ data/
 ## Estructura del ZIP de salida
 
 Por cada imagen:
-- input.<ext>: imagen original.
+- input.tiff: imagen original convertida a TIFF.
 - input_preview.png: vista normalizada para inspección visual.
-- cell_mask.tif: máscara de instancias de células (Cellpose).
-- parasite_mask.tif: máscara de instancias de parásitos (StarDist).
-- metrics.json: métricas por imagen.
+- cell_mask.tiff: máscara de instancias de células (Cellpose).
+- parasite_mask.tiff: máscara de instancias de parásitos (StarDist).
 
 A nivel job:
-- summary.json: agregados de todo el lote.
+- metrics.xlsx: métricas generales y por imagen.
 - results_<job_id>.zip: paquete final de resultados.
 
 **Git**

@@ -32,27 +32,52 @@ PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "200"))
 PARASITE_ASSIGN_THRESHOLD = float(os.getenv("PARASITE_ASSIGN_THRESHOLD", "0.4"))
 
 
-def _resolve_input_images(uploaded: Path, job_temp_dir: Path) -> list[Path]:
+def _collect_images_from_dir(input_dir: Path) -> list[Path]:
+    images = [p for p in input_dir.rglob("*") if p.is_file() and p.suffix.lower() in IO_IMAGE_EXTS]
+    images.sort(key=lambda p: str(p).lower())
+    if not images:
+        raise ValueError("El directorio no contiene imagenes soportadas (tif/tiff/czi).")
+    return images
+
+
+def _extract_zip_safely(zip_path: Path, unzip_dir: Path) -> None:
+    root = unzip_dir.resolve()
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        for member in zf.infolist():
+            target = (unzip_dir / member.filename).resolve()
+            if target != root and root not in target.parents:
+                raise ValueError("El ZIP contiene rutas inseguras.")
+        zf.extractall(unzip_dir)
+
+
+def _resolve_input_images(input_path: Path, job_temp_dir: Path) -> list[Path]:
     """
-    Resuelve las imágenes de entrada desde un archivo subido.
+    Resuelve las imágenes de entrada desde un archivo, ZIP o directorio.
 
     Si el archivo es una imagen individual (TIFF/CZI), la valida y devuelve en una lista.
     Si es un ZIP, lo descomprime en un directorio temporal, extrae todas las imágenes
-    soportadas, las ordena alfabéticamente y las devuelve.
+    soportadas, las ordena alfabéticamente y las devuelve. Si es un directorio, busca
+    imágenes soportadas recursivamente.
 
     Returns:
         Lista de rutas a las imágenes procesables.
 
     Raises:
-        ValueError: Si el archivo no es soportado o el ZIP no contiene imágenes válidas.
+        ValueError: Si la entrada no es soportada o no contiene imágenes válidas.
     """
+    if not input_path.exists():
+        raise FileNotFoundError(f"No existe la entrada: {input_path}")
+
+    if input_path.is_dir():
+        return _collect_images_from_dir(input_path)
+
     # Caso 1: Archivo individual (no ZIP)
-    if uploaded.suffix.lower() != ".zip":
+    if input_path.suffix.lower() != ".zip":
         # Verificar que sea una extensión de imagen soportada
-        if uploaded.suffix.lower() not in IO_IMAGE_EXTS:
-            raise ValueError("Archivo no soportado. Subi una imagen TIFF/CZI o un ZIP con imagenes.")
+        if input_path.suffix.lower() not in IO_IMAGE_EXTS:
+            raise ValueError("Archivo no soportado. Usa una imagen TIFF/CZI, un ZIP o un directorio con imagenes.")
         # Devolver la imagen como lista de un elemento
-        return [uploaded]
+        return [input_path]
 
     # Caso 2: Archivo ZIP - descomprimir y extraer imágenes
     unzip_dir = job_temp_dir / "unzipped"
@@ -62,8 +87,7 @@ def _resolve_input_images(uploaded: Path, job_temp_dir: Path) -> list[Path]:
     unzip_dir.mkdir(parents=True, exist_ok=True)
 
     # Extraer todo el contenido del ZIP
-    with zipfile.ZipFile(uploaded, "r") as zf:
-        zf.extractall(unzip_dir)
+    _extract_zip_safely(input_path, unzip_dir)
 
     # Buscar recursivamente todas las imágenes con extensiones soportadas
     images = [p for p in unzip_dir.rglob("*") if p.is_file() and p.suffix.lower() in IO_IMAGE_EXTS]
@@ -209,20 +233,20 @@ def _build_infected_overlay(
     overlay[border] = np.array([255, 0, 0], dtype=np.uint8)
     return overlay
 
-def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
-    job_upload_dir = settings.uploads_dir / job_id
-    job_output_dir = settings.outputs_dir / job_id
-    job_temp_dir = settings.temp_dir / job_id
+def run_pipeline_from_input(
+    input_path: Path,
+    job_output_dir: Path,
+    job_temp_dir: Path,
+    job_id: str,
+) -> tuple[Path, list[dict[str, object]]]:
+    input_path = Path(input_path)
+    job_output_dir = Path(job_output_dir)
+    job_temp_dir = Path(job_temp_dir)
 
     job_output_dir.mkdir(parents=True, exist_ok=True)
     job_temp_dir.mkdir(parents=True, exist_ok=True)
 
-    uploaded_files = [p for p in job_upload_dir.iterdir() if p.is_file()]
-    if not uploaded_files:
-        raise FileNotFoundError("No hay archivo subido para este job.")
-
-    uploaded = uploaded_files[0]
-    images = _resolve_input_images(uploaded, job_temp_dir)
+    images = _resolve_input_images(input_path, job_temp_dir)
 
     export_root = job_output_dir / f"job_{job_id}"
     images_root = export_root / "images"
@@ -319,3 +343,21 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
                 zf.write(p, arcname=str(p.relative_to(job_output_dir)))
 
     return zip_path, preview_items
+
+
+def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]]]:
+    job_upload_dir = settings.uploads_dir / job_id
+    job_output_dir = settings.outputs_dir / job_id
+    job_temp_dir = settings.temp_dir / job_id
+
+    uploaded_files = [p for p in job_upload_dir.iterdir() if p.is_file()]
+    if not uploaded_files:
+        raise FileNotFoundError("No hay archivo subido para este job.")
+
+    uploaded = uploaded_files[0]
+    return run_pipeline_from_input(
+        input_path=uploaded,
+        job_output_dir=job_output_dir,
+        job_temp_dir=job_temp_dir,
+        job_id=job_id,
+    )
