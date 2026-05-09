@@ -156,66 +156,79 @@ def nearest_cell_distance(cells_lab: np.ndarray, pmask: np.ndarray) -> tuple[int
     return cid, distance
 
 
-def _parasite_centroid(pmask: np.ndarray) -> np.ndarray | None:
-    ys, xs = np.where(pmask)
-    if ys.size == 0:
-        return None
-    return np.array([float(ys.mean()), float(xs.mean())], dtype=float)
-
-
-def _cell_shape_models(cells_lab: np.ndarray) -> dict[int, tuple[np.ndarray, np.ndarray]]:
-    models: dict[int, tuple[np.ndarray, np.ndarray]] = {}
-    c_total = int(cells_lab.max()) if cells_lab.size else 0
-
-    for cid in range(1, c_total + 1):
-        ys, xs = np.where(cells_lab == cid)
-        if ys.size < 2:
-            continue
-
-        coords = np.column_stack((ys, xs)).astype(float)
-        center = coords.mean(axis=0)
-        cov = np.asarray(np.cov(coords, rowvar=False), dtype=float)
-        if cov.shape != (2, 2):
-            continue
-
-        cov += np.eye(2, dtype=float) * 1e-3
-        inv_cov = np.linalg.pinv(cov)
-        models[cid] = (center, inv_cov)
-
-    return models
-
-
-def _mahalanobis_distance(point: np.ndarray, model: tuple[np.ndarray, np.ndarray]) -> float:
-    center, inv_cov = model
-    delta = point - center
-    value = float(delta @ inv_cov @ delta)
-    return float(np.sqrt(max(value, 0.0)))
-
-
-def _refine_cell_by_mahalanobis(
-    current_cid: int,
-    parasite_center: np.ndarray | None,
-    cell_models: dict[int, tuple[np.ndarray, np.ndarray]],
+def _cluster_owner_by_contact(
+    cells_lab: np.ndarray,
+    cluster_mask: np.ndarray,
     margin: float,
 ) -> int:
-    if current_cid <= 0 or parasite_center is None or current_cid not in cell_models:
-        return current_cid
+    c_total = int(cells_lab.max()) if cells_lab.size else 0
+    if c_total == 0 or not cluster_mask.any():
+        return 0
 
-    current_distance = _mahalanobis_distance(parasite_center, cell_models[current_cid])
-    best_cid = current_cid
-    best_distance = current_distance
+    contact = np.bincount(cells_lab[cluster_mask].ravel(), minlength=c_total + 1)
+    contact[0] = 0
+    best_cid = int(contact.argmax())
+    best_contact = int(contact[best_cid])
+    if best_contact <= 0:
+        return 0
 
-    for cid, model in cell_models.items():
-        distance = _mahalanobis_distance(parasite_center, model)
-        if distance < best_distance:
-            best_cid = cid
-            best_distance = distance
+    sorted_contact = np.sort(contact[1:])
+    second_contact = int(sorted_contact[-2]) if sorted_contact.size >= 2 else 0
+    safe_margin = max(float(margin), 1.0)
+    if second_contact > 0 and best_contact < second_contact * safe_margin:
+        return 0
 
-    safe_margin = min(max(float(margin), 0.0), 1.0)
-    if best_cid != current_cid and best_distance < current_distance * safe_margin:
-        return best_cid
+    return best_cid
 
-    return current_cid
+
+def _refine_assignments_by_clusters(
+    cells_lab: np.ndarray,
+    parasites_lab: np.ndarray,
+    cell_ids: np.ndarray,
+    confidences: np.ndarray,
+    direct_overlaps: np.ndarray,
+    threshold: float,
+    radius: int,
+    min_size: int,
+    margin: float,
+) -> None:
+    if radius <= 0 or min_size <= 1 or int(parasites_lab.max()) == 0:
+        return
+
+    structure = np.ones((2 * int(radius) + 1, 2 * int(radius) + 1), dtype=bool)
+    cluster_lab, cluster_count = ndi_label(binary_dilation(parasites_lab > 0, structure=structure))
+
+    for cluster_id in range(1, cluster_count + 1):
+        cluster_mask = cluster_lab == cluster_id
+        parasite_ids = np.unique(parasites_lab[cluster_mask])
+        parasite_ids = parasite_ids[parasite_ids != 0]
+        if parasite_ids.size < min_size:
+            continue
+
+        overlapped_cells = {
+            int(cell_ids[pid])
+            for pid in parasite_ids
+            if direct_overlaps[pid] and int(cell_ids[pid]) > 0
+        }
+        if len(overlapped_cells) > 1:
+            continue
+
+        current_cells = {
+            int(cell_ids[pid])
+            for pid in parasite_ids
+            if int(cell_ids[pid]) > 0 and float(confidences[pid]) >= threshold
+        }
+        has_unassigned = any(float(confidences[pid]) < threshold for pid in parasite_ids)
+        if len(current_cells) <= 1 and not has_unassigned:
+            continue
+
+        owner = _cluster_owner_by_contact(cells_lab, cluster_mask, margin=margin)
+        if owner <= 0:
+            continue
+
+        for pid in parasite_ids:
+            cell_ids[pid] = owner
+            confidences[pid] = max(float(confidences[pid]), float(threshold))
 
 
 def assign_parasites(
@@ -223,8 +236,10 @@ def assign_parasites(
     parasites_lab: np.ndarray,
     sigma: float = 40.0,
     threshold: float = 0.3,
-    refinement: str = "none",
-    mahalanobis_margin: float = 0.65,
+    cluster_reassignment: bool = False,
+    cluster_radius: int = 25,
+    cluster_min_size: int = 3,
+    cluster_margin: float = 1.5,
 ) -> Dict[str, object]:
     """
     Asigna parásitos a células usando lógica de solapamiento y proximidad.
@@ -261,18 +276,22 @@ def assign_parasites(
             "infected_cells": 0,
             "parasites_per_cell": counts,
             "assigned_parasites": assigned_parasites,
-            "unassigned_parasites": p_total
+            "unassigned_parasites": p_total,
+            "mean_assignment_confidence": 0.0,
         }
 
     safe_sigma = max(float(sigma), 1e-6)
-    use_mahalanobis = refinement.strip().lower() == "mahalanobis"
-    cell_models = _cell_shape_models(cells_lab) if use_mahalanobis else {}
+    cell_ids = np.zeros(p_total + 1, dtype=int)
+    confidence_by_pid = np.zeros(p_total + 1, dtype=float)
+    direct_overlaps = np.zeros(p_total + 1, dtype=bool)
+    present_pids: list[int] = []
 
     for pid in range(1, p_total + 1):
         pmask = parasites_lab == pid
         if not pmask.any():
             continue
-            
+
+        present_pids.append(pid)
         overlap = np.bincount(cells_lab[pmask].ravel(), minlength=c_total + 1)
         overlap[0] = 0
         cid = int(overlap.argmax())
@@ -280,35 +299,48 @@ def assign_parasites(
         # caso 1: solapamiento directo → confianza máxima
         if overlap[cid] > 0:
             confidence = 1.0
+            direct_overlaps[pid] = True
         # caso 2: no solapa → buscar célula más cercana y calcular confianza por distancia
         else:
             cid, distance = nearest_cell_distance(cells_lab, pmask)
             if cid <= 0:
-                unassigned_parasites += 1
-                confidences.append(0.0)
+                confidence_by_pid[pid] = 0.0
                 continue
             confidence = float(np.exp(-distance / safe_sigma))
-            if use_mahalanobis:
-                cid = _refine_cell_by_mahalanobis(
-                    current_cid=cid,
-                    parasite_center=_parasite_centroid(pmask),
-                    cell_models=cell_models,
-                    margin=mahalanobis_margin,
-                )
+        cell_ids[pid] = cid
+        confidence_by_pid[pid] = confidence
 
+    if cluster_reassignment:
+        _refine_assignments_by_clusters(
+            cells_lab=cells_lab,
+            parasites_lab=parasites_lab,
+            cell_ids=cell_ids,
+            confidences=confidence_by_pid,
+            direct_overlaps=direct_overlaps,
+            threshold=threshold,
+            radius=cluster_radius,
+            min_size=cluster_min_size,
+            margin=cluster_margin,
+        )
+
+    for pid in present_pids:
+        cid = int(cell_ids[pid])
+        confidence = float(confidence_by_pid[pid])
         confidences.append(confidence)
 
-        if confidence >= threshold:
+        if cid > 0 and confidence >= threshold:
             counts[cid - 1] += 1
             assigned_parasites += 1
         else:
             unassigned_parasites += 1
 
     infected_cells = int((counts > 0).sum())
+    mean_assignment_confidence = float(np.mean(confidences)) if confidences else 0.0
 
     return {
         "infected_cells": infected_cells,
         "parasites_per_cell": counts,
         "assigned_parasites": assigned_parasites,
         "unassigned_parasites": unassigned_parasites,
+        "mean_assignment_confidence": mean_assignment_confidence,
     }
