@@ -16,9 +16,15 @@
           <p><span>Job ID</span> {{ job_id }}</p>
           <p><span>ZIP</span> {{ zip_name }}</p>
           <p><span>CSV</span> metricas_generales.csv / metricas_por_imagen.csv</p>
+          <p><span>PNG</span> histogramas por imagen / histograma global</p>
         </div>
 
         {% if preview_items and preview_items|length > 0 %}
+        <article class="viewer-card global-histogram">
+          <h2>Histograma global</h2>
+          <img src="{{ global_histogram_url }}" alt="Histograma global de parasitos por celula" loading="lazy" />
+        </article>
+
         <section class="viewer" aria-live="polite">
           <div class="viewer-nav">
             <button id="prev-btn" class="btn btn-ghost" type="button">Anterior</button>
@@ -38,6 +44,10 @@
             <article class="viewer-card">
               <h2>Máscara de parásitos</h2>
               <img id="img-parasite" src="" alt="Vista previa de parasite mask" loading="lazy" />
+            </article>
+            <article class="viewer-card">
+              <h2>Histograma</h2>
+              <img id="img-histogram" src="" alt="Histograma de parasitos por celula" loading="lazy" />
             </article>
             <article class="viewer-card viewer-metrics">
               <h2>Métricas</h2>
@@ -75,6 +85,7 @@
         const inputEl = document.getElementById("img-input");
         const cellEl = document.getElementById("img-cell");
         const parasiteEl = document.getElementById("img-parasite");
+        const histogramEl = document.getElementById("img-histogram");
 
         const totalCelulasEl = document.getElementById("m-total-celulas");
         const totalParasitosEl = document.getElementById("m-total-parasitos");
@@ -102,6 +113,7 @@
           inputEl.src = item.input_infected_url || item.input_url;
           cellEl.src = item.cell_url;
           parasiteEl.src = item.parasite_url;
+          histogramEl.src = item.histogram_url;
 
           const m = item.metrics || {};
           totalCelulasEl.textContent = String(m.total_celulas ?? 0);

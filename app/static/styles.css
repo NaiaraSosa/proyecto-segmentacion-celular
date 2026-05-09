@@ -166,7 +166,7 @@ input[type="file"] {
 .viewer-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .viewer-card {
@@ -189,6 +189,14 @@ input[type="file"] {
   border-radius: 8px;
   background: #0d1220;
   border: 1px solid #26324a;
+}
+
+.global-histogram {
+  margin-top: 16px;
+}
+
+.global-histogram img {
+  aspect-ratio: 16 / 9;
 }
 
 .viewer-metrics dl {

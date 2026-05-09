@@ -11,6 +11,7 @@ from scipy.ndimage import binary_erosion
 
 from app.core.config import settings
 from app.pipeline.cellpose import segment_cells
+from app.pipeline.histograms import save_histogram
 from app.pipeline.io import IMAGE_EXTS as IO_IMAGE_EXTS
 from app.pipeline.io import load_image_2d
 from app.pipeline.metrics import compute_metrics, summarize_job
@@ -330,6 +331,12 @@ def run_pipeline_from_input(
         }
         all_metrics.append(metrics)
 
+        save_histogram(
+            folder / "histograma_parasitos_por_celula.png",
+            metrics.get("parasitos_por_celula", []),
+            title=f"Parásitos por celula - {img_path.name}",
+        )
+
         preview_items.append(
             {
                 "title": folder.name,
@@ -355,6 +362,16 @@ def run_pipeline_from_input(
 
     summary = summarize_job(all_metrics)
     summary_row = {"job_id": job_id, **summary}
+    all_parasites_per_cell = [
+        int(value)
+        for metrics in all_metrics
+        for value in metrics.get("parasitos_por_celula", [])
+    ]
+    save_histogram(
+        export_root / "histograma_global_parasitos_por_celula.png",
+        all_parasites_per_cell,
+        title="Parásitos por celula - Totales",
+    )
     _write_metrics_csvs(export_root, summary_row, all_metrics)
 
     zip_path = job_output_dir / f"results_{job_id}.zip"
