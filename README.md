@@ -54,10 +54,11 @@ conda activate /rhoeql/lab/naiara/conda_envs/segapp_env
 ```bash
 pip install -U pip
 pip install -e .
-pip install "tensorflow-cpu==2.15.*"
 pip uninstall -y torch torchvision torchaudio
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 ```
+
+> Nota: el proyecto fija `numpy>=1.26,<2` porque TensorFlow 2.15/StarDist/CSBDeep no son compatibles con NumPy 2.x. Si `pip install -e .` actualiza NumPy a 2.x, volver a ejecutar `pip install -e .` desde esta carpeta lo baja a una versión compatible.
 
 ## Ejecutar desde consola
 
