@@ -156,11 +156,75 @@ def nearest_cell_distance(cells_lab: np.ndarray, pmask: np.ndarray) -> tuple[int
     return cid, distance
 
 
+def _parasite_centroid(pmask: np.ndarray) -> np.ndarray | None:
+    ys, xs = np.where(pmask)
+    if ys.size == 0:
+        return None
+    return np.array([float(ys.mean()), float(xs.mean())], dtype=float)
+
+
+def _cell_shape_models(cells_lab: np.ndarray) -> dict[int, tuple[np.ndarray, np.ndarray]]:
+    models: dict[int, tuple[np.ndarray, np.ndarray]] = {}
+    c_total = int(cells_lab.max()) if cells_lab.size else 0
+
+    for cid in range(1, c_total + 1):
+        ys, xs = np.where(cells_lab == cid)
+        if ys.size < 2:
+            continue
+
+        coords = np.column_stack((ys, xs)).astype(float)
+        center = coords.mean(axis=0)
+        cov = np.asarray(np.cov(coords, rowvar=False), dtype=float)
+        if cov.shape != (2, 2):
+            continue
+
+        cov += np.eye(2, dtype=float) * 1e-3
+        inv_cov = np.linalg.pinv(cov)
+        models[cid] = (center, inv_cov)
+
+    return models
+
+
+def _mahalanobis_distance(point: np.ndarray, model: tuple[np.ndarray, np.ndarray]) -> float:
+    center, inv_cov = model
+    delta = point - center
+    value = float(delta @ inv_cov @ delta)
+    return float(np.sqrt(max(value, 0.0)))
+
+
+def _refine_cell_by_mahalanobis(
+    current_cid: int,
+    parasite_center: np.ndarray | None,
+    cell_models: dict[int, tuple[np.ndarray, np.ndarray]],
+    margin: float,
+) -> int:
+    if current_cid <= 0 or parasite_center is None or current_cid not in cell_models:
+        return current_cid
+
+    current_distance = _mahalanobis_distance(parasite_center, cell_models[current_cid])
+    best_cid = current_cid
+    best_distance = current_distance
+
+    for cid, model in cell_models.items():
+        distance = _mahalanobis_distance(parasite_center, model)
+        if distance < best_distance:
+            best_cid = cid
+            best_distance = distance
+
+    safe_margin = min(max(float(margin), 0.0), 1.0)
+    if best_cid != current_cid and best_distance < current_distance * safe_margin:
+        return best_cid
+
+    return current_cid
+
+
 def assign_parasites(
     cells_lab: np.ndarray,
     parasites_lab: np.ndarray,
     sigma: float = 40.0,
     threshold: float = 0.3,
+    refinement: str = "none",
+    mahalanobis_margin: float = 0.65,
 ) -> Dict[str, object]:
     """
     Asigna parásitos a células usando lógica de solapamiento y proximidad.
@@ -184,13 +248,11 @@ def assign_parasites(
         - parasites_per_cell: Array con conteo de parásitos por célula (índice = ID-1)
         - assigned_parasites: Parásitos asignados con confianza ≥ threshold
         - unassigned_parasites: Parásitos con confianza < threshold
-        - mean_assignment_confidence: Confianza promedio de TODAS las asignaciones
     """
     c_total = int(cells_lab.max())
     p_total = int(parasites_lab.max())
     counts = np.zeros(c_total, dtype=int)
     confidences: list[float] = []
-    # confident_confidences: list[float] = []
     assigned_parasites = 0
     unassigned_parasites = 0
 
@@ -199,12 +261,12 @@ def assign_parasites(
             "infected_cells": 0,
             "parasites_per_cell": counts,
             "assigned_parasites": assigned_parasites,
-            "unassigned_parasites": p_total,
-            "mean_assignment_confidence": 0.0,
-            #"mean_confident_assignment_confidence": 0.0,
+            "unassigned_parasites": p_total
         }
 
     safe_sigma = max(float(sigma), 1e-6)
+    use_mahalanobis = refinement.strip().lower() == "mahalanobis"
+    cell_models = _cell_shape_models(cells_lab) if use_mahalanobis else {}
 
     for pid in range(1, p_total + 1):
         pmask = parasites_lab == pid
@@ -226,27 +288,27 @@ def assign_parasites(
                 confidences.append(0.0)
                 continue
             confidence = float(np.exp(-distance / safe_sigma))
+            if use_mahalanobis:
+                cid = _refine_cell_by_mahalanobis(
+                    current_cid=cid,
+                    parasite_center=_parasite_centroid(pmask),
+                    cell_models=cell_models,
+                    margin=mahalanobis_margin,
+                )
 
         confidences.append(confidence)
 
         if confidence >= threshold:
             counts[cid - 1] += 1
             assigned_parasites += 1
-            #confident_confidences.append(confidence)
         else:
             unassigned_parasites += 1
 
     infected_cells = int((counts > 0).sum())
-    mean_assignment_confidence = float(np.mean(confidences)) if confidences else 0.0
-    #mean_confident_assignment_confidence = (
-    #    float(np.mean(confident_confidences)) if confident_confidences else 0.0
-    #)
 
     return {
         "infected_cells": infected_cells,
         "parasites_per_cell": counts,
         "assigned_parasites": assigned_parasites,
         "unassigned_parasites": unassigned_parasites,
-        "mean_assignment_confidence": mean_assignment_confidence,
-        #"mean_confident_assignment_confidence": mean_confident_assignment_confidence,
     }

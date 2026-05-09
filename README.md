@@ -82,7 +82,7 @@ La salida se guarda en:
 <output>/<job_id>/
   job_<job_id>/
     images/
-    metrics.xlsx
+    metrics.csv
   results_<job_id>.zip
 ```
 
@@ -101,6 +101,8 @@ export CELL_MIN_AREA=500
 export PARASITE_MAX_AREA=400
 export PARASITE_ASSIGN_SIGMA=150
 export PARASITE_ASSIGN_THRESHOLD=0.2
+export PARASITE_ASSIGN_REFINEMENT=mahalanobis
+export PARASITE_MAHALANOBIS_MARGIN=0.65
 segmentacion web --host 127.0.0.1 --port 8010
 ```
 
@@ -123,6 +125,10 @@ Se documentan en `.env.example`:
 - `MAX_UPLOAD_MB`
 - `CELL_MIN_AREA` (default: `500`)
 - `PARASITE_MAX_AREA` (default: `450`)
+- `PARASITE_ASSIGN_SIGMA` (default: `200`)
+- `PARASITE_ASSIGN_THRESHOLD` (default: `0.4`)
+- `PARASITE_ASSIGN_REFINEMENT` (default: `none`, usar `mahalanobis` para activar refinamiento por forma)
+- `PARASITE_MAHALANOBIS_MARGIN` (default: `0.65`)
 
 ## Estructura del proyecto
 
@@ -148,10 +154,10 @@ data/
 4. Segmentación de parásitos con StarDist.
 5. Filtro de parásitos por área máxima (`PARASITE_MAX_AREA`).
 6. Merge de parásitos cercanos para reducir doble conteo.
-7. Asignación parasito -> célula (solape, o celula más cercana si no hay solape).
+7. Asignación parasito -> célula (solape, o celula más cercana si no hay solape). Opcionalmente se refina por Mahalanobis para contemplar forma celular.
 8. Cálculo de métricas y export de resultados.
 
-## Métricas exportadas ```(metrics.xlsx)```
+## Métricas exportadas ```(metrics.csv)```
 - total_celulas: número total de células detectadas.
 - total_parasitos: número total de parásitos detectados.
 - celulas_infectadas: células con al menos un parásito asignado.
@@ -167,7 +173,7 @@ Por cada imagen:
 - parasite_mask.tiff: máscara de instancias de parásitos (StarDist).
 
 A nivel job:
-- metrics.xlsx: métricas generales y por imagen.
+- metrics.csv: métricas generales y por imagen.
 - results_<job_id>.zip: paquete final de resultados.
 
 **Git**
