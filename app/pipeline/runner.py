@@ -30,8 +30,15 @@ PARASITE_MAX_AREA = int(os.getenv("PARASITE_MAX_AREA", "500"))
 #PARASITE_MAX_AREA_PERCENTILE = float(os.getenv("PARASITE_MAX_AREA_PERCENTILE", "90"))
 PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "200"))
 PARASITE_ASSIGN_THRESHOLD = float(os.getenv("PARASITE_ASSIGN_THRESHOLD", "0.4"))
-PARASITE_ASSIGN_REFINEMENT = os.getenv("PARASITE_ASSIGN_REFINEMENT", "none")
-PARASITE_MAHALANOBIS_MARGIN = float(os.getenv("PARASITE_MAHALANOBIS_MARGIN", "0.65"))
+PARASITE_CLUSTER_REASSIGNMENT = os.getenv("PARASITE_CLUSTER_REASSIGNMENT", "1").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "si",
+}
+PARASITE_CLUSTER_RADIUS = int(os.getenv("PARASITE_CLUSTER_RADIUS", "25"))
+PARASITE_CLUSTER_MIN_SIZE = int(os.getenv("PARASITE_CLUSTER_MIN_SIZE", "3"))
+PARASITE_CLUSTER_MARGIN = float(os.getenv("PARASITE_CLUSTER_MARGIN", "1.5"))
 
 
 def _collect_images_from_dir(input_dir: Path) -> list[Path]:
@@ -297,8 +304,10 @@ def run_pipeline_from_input(
                 parasites_lab,
                 assign_sigma=PARASITE_ASSIGN_SIGMA,
                 assign_threshold=PARASITE_ASSIGN_THRESHOLD,
-                assign_refinement=PARASITE_ASSIGN_REFINEMENT,
-                mahalanobis_margin=PARASITE_MAHALANOBIS_MARGIN,
+                cluster_reassignment=PARASITE_CLUSTER_REASSIGNMENT,
+                cluster_radius=PARASITE_CLUSTER_RADIUS,
+                cluster_min_size=PARASITE_CLUSTER_MIN_SIZE,
+                cluster_margin=PARASITE_CLUSTER_MARGIN,
             ),
         }
         all_metrics.append(metrics)
