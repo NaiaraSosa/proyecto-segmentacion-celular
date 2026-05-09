@@ -12,6 +12,8 @@ def compute_metrics(
     parasites_lab: np.ndarray,
     assign_sigma: float = 40.0,
     assign_threshold: float = 0.5,
+    assign_refinement: str = "none",
+    mahalanobis_margin: float = 0.65,
 ) -> Dict[str, object]:
     """
     Calcula métricas principales por imagen a partir de máscaras de instancias.
@@ -51,6 +53,8 @@ def compute_metrics(
         parasites_lab,
         sigma=assign_sigma,
         threshold=assign_threshold,
+        refinement=assign_refinement,
+        mahalanobis_margin=mahalanobis_margin,
     )
 
     infected_cells = int(assignment["infected_cells"])
@@ -68,10 +72,6 @@ def compute_metrics(
         "parasitos_asignados": assigned_parasites,
         "parasitos_no_asignados": unassigned_parasites,
         "celulas_infectadas": infected_cells,
-        "promedio_confianza_asignacion": float(assignment["mean_assignment_confidence"]),
-        #"promedio_confianza_asignaciones_confiables": float(
-        #    assignment["mean_confident_assignment_confidence"]
-        #),
         "promedio_parasitos_por_celula": avg_parasites_per_infected_cell,
         "parasitos_por_celula": parasites_per_cell.tolist(),
     }

@@ -1,4 +1,5 @@
 ﻿from __future__ import annotations
+import csv
 import os
 import shutil
 import zipfile
@@ -6,7 +7,6 @@ from pathlib import Path
 
 import numpy as np
 import tifffile
-from openpyxl import Workbook
 from scipy.ndimage import binary_erosion
 
 from app.core.config import settings
@@ -30,6 +30,8 @@ PARASITE_MAX_AREA = int(os.getenv("PARASITE_MAX_AREA", "500"))
 #PARASITE_MAX_AREA_PERCENTILE = float(os.getenv("PARASITE_MAX_AREA_PERCENTILE", "90"))
 PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "200"))
 PARASITE_ASSIGN_THRESHOLD = float(os.getenv("PARASITE_ASSIGN_THRESHOLD", "0.4"))
+PARASITE_ASSIGN_REFINEMENT = os.getenv("PARASITE_ASSIGN_REFINEMENT", "none")
+PARASITE_MAHALANOBIS_MARGIN = float(os.getenv("PARASITE_MAHALANOBIS_MARGIN", "0.65"))
 
 
 def _collect_images_from_dir(input_dir: Path) -> list[Path]:
@@ -126,68 +128,57 @@ def _convert_to_tiff(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def _write_metrics_excel(path: Path, summary: dict[str, object], image_metrics: list[dict[str, object]]) -> None:
-    wb = Workbook()
+def _write_metrics_csv(path: Path, summary: dict[str, object], image_metrics: list[dict[str, object]]) -> None:
+    fields = [
+        "tipo",
+        "job_id",
+        "image_id",
+        "source_filename",
+        "imagenes_procesadas",
+        "total_celulas",
+        "total_parasitos",
+        "parasitos_asignados",
+        "parasitos_no_asignados",
+        "celulas_infectadas",
+        "total_parasitos_asignados",
+        "total_parasitos_no_asignados",
+        "total_celulas_infectadas",
+        "promedio_parasitos_por_celula",
+        "parasitos_por_celula",
+    ]
 
-    ws_summary = wb.active
-    ws_summary.title = "Generales"
-    ws_summary.append(
-        [
-            "job_id",
-            "imagenes_procesadas",
-            "total_celulas",
-            "total_parasitos",
-            "total_parasitos_asignados",
-            "total_parasitos_no_asignados",
-            "total_celulas_infectadas",
-        ]
-    )
-    ws_summary.append(
-        [
-            summary.get("job_id", ""),
-            int(summary.get("imagenes_procesadas", 0)),
-            int(summary.get("total_celulas", 0)),
-            int(summary.get("total_parasitos", 0)),
-            int(summary.get("total_parasitos_asignados", 0)),
-            int(summary.get("total_parasitos_no_asignados", 0)),
-            int(summary.get("total_celulas_infectadas", 0)),
-        ]
-    )
-
-    ws_images = wb.create_sheet("Por imagen")
-    ws_images.append(
-        [
-            "job_id",
-            "image_id",
-            "source_filename",
-            "total_celulas",
-            "total_parasitos",
-            "parasitos_asignados",
-            "parasitos_no_asignados",
-            "celulas_infectadas",
-            "promedio_confianza_asignacion",
-            "promedio_parasitos_por_celula",
-            "parasitos_por_celula",
-        ]
-    )
-    for m in image_metrics:
-        ws_images.append(
-            [
-                m.get("job_id", ""),
-                m.get("image_id", ""),
-                m.get("source_filename", ""),
-                int(m.get("total_celulas", 0)),
-                int(m.get("total_parasitos", 0)),
-                int(m.get("parasitos_asignados", 0)),
-                int(m.get("parasitos_no_asignados", 0)),
-                int(m.get("celulas_infectadas", 0)),
-                float(m.get("promedio_confianza_asignacion", 0.0)),
-                float(m.get("promedio_parasitos_por_celula", 0.0)),
-                ";".join(str(x) for x in m.get("parasitos_por_celula", [])),
-            ]
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fields)
+        writer.writeheader()
+        writer.writerow(
+            {
+                "tipo": "general",
+                "job_id": summary.get("job_id", ""),
+                "imagenes_procesadas": int(summary.get("imagenes_procesadas", 0)),
+                "total_celulas": int(summary.get("total_celulas", 0)),
+                "total_parasitos": int(summary.get("total_parasitos", 0)),
+                "total_parasitos_asignados": int(summary.get("total_parasitos_asignados", 0)),
+                "total_parasitos_no_asignados": int(summary.get("total_parasitos_no_asignados", 0)),
+                "total_celulas_infectadas": int(summary.get("total_celulas_infectadas", 0)),
+            }
         )
 
-    wb.save(path)
+        for m in image_metrics:
+            writer.writerow(
+                {
+                    "tipo": "imagen",
+                    "job_id": m.get("job_id", ""),
+                    "image_id": m.get("image_id", ""),
+                    "source_filename": m.get("source_filename", ""),
+                    "total_celulas": int(m.get("total_celulas", 0)),
+                    "total_parasitos": int(m.get("total_parasitos", 0)),
+                    "parasitos_asignados": int(m.get("parasitos_asignados", 0)),
+                    "parasitos_no_asignados": int(m.get("parasitos_no_asignados", 0)),
+                    "celulas_infectadas": int(m.get("celulas_infectadas", 0)),
+                    "promedio_parasitos_por_celula": float(m.get("promedio_parasitos_por_celula", 0.0)),
+                    "parasitos_por_celula": ";".join(str(x) for x in m.get("parasitos_por_celula", [])),
+                }
+            )
 
 
 def _build_infected_overlay(
@@ -306,6 +297,8 @@ def run_pipeline_from_input(
                 parasites_lab,
                 assign_sigma=PARASITE_ASSIGN_SIGMA,
                 assign_threshold=PARASITE_ASSIGN_THRESHOLD,
+                assign_refinement=PARASITE_ASSIGN_REFINEMENT,
+                mahalanobis_margin=PARASITE_MAHALANOBIS_MARGIN,
             ),
         }
         all_metrics.append(metrics)
@@ -319,7 +312,6 @@ def run_pipeline_from_input(
                     "total_parasitos": int(metrics.get("total_parasitos", 0)),
                     "celulas_infectadas": int(metrics.get("celulas_infectadas", 0)),
                     "parasitos_no_asignados": int(metrics.get("parasitos_no_asignados", 0)),
-                    "promedio_parasitos_por_celula": int(round(metrics.get("promedio_parasitos_por_celula", 0.0))),
                     "parasitos_por_celula": metrics.get("parasitos_por_celula", []),
                 },
             }
@@ -334,7 +326,7 @@ def run_pipeline_from_input(
 
     summary = summarize_job(all_metrics)
     summary_row = {"job_id": job_id, **summary}
-    _write_metrics_excel(export_root / "metrics.xlsx", summary_row, all_metrics)
+    _write_metrics_csv(export_root / "metrics.csv", summary_row, all_metrics)
 
     zip_path = job_output_dir / f"results_{job_id}.zip"
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
