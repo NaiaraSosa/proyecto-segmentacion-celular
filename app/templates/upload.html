@@ -17,8 +17,24 @@
           <p><span>Archivo</span> {{ filename }}</p>
         </div>
 
-        <form id="process-form" action="/process/{{ job_id }}" method="post" class="stack">
-          <button id="process-btn" type="submit" class="btn btn-primary">Procesar segmentación</button>
+        <form
+          action="/preprocess/{{ job_id }}"
+          method="post"
+          class="stack run-form"
+          data-progress-title="Revisando calidad"
+          data-progress-text="Segmentando celulas para estimar que imagenes del batch son usables."
+        >
+          <button type="submit" class="btn btn-primary">Revisar calidad del batch</button>
+        </form>
+
+        <form
+          action="/process/{{ job_id }}"
+          method="post"
+          class="stack run-form"
+          data-progress-title="Procesando imagen"
+          data-progress-text="Esto puede tardar unos minutos segun el tamano del archivo y el modelo."
+        >
+          <button type="submit" class="btn btn-ghost">Procesar segmentacion</button>
         </form>
 
         <a href="/" class="btn btn-ghost">Volver al inicio</a>
@@ -27,23 +43,31 @@
     <div id="progress-overlay" class="progress-overlay" aria-live="polite" aria-hidden="true">
       <div class="progress-card">
         <div class="spinner" aria-hidden="true"></div>
-        <h2>Procesando imagen</h2>
-        <p>Esto puede tardar unos minutos según el tamaño del archivo y el modelo.</p>
+        <h2 id="progress-title">Procesando imagen</h2>
+        <p id="progress-text">Esto puede tardar unos minutos segun el tamano del archivo y el modelo.</p>
         <div class="progress-track">
           <div class="progress-bar"></div>
         </div>
       </div>
     </div>
     <script>
-      const form = document.getElementById("process-form");
-      const button = document.getElementById("process-btn");
+      const forms = document.querySelectorAll(".run-form");
       const overlay = document.getElementById("progress-overlay");
+      const progressTitle = document.getElementById("progress-title");
+      const progressText = document.getElementById("progress-text");
 
-      form.addEventListener("submit", () => {
-        button.disabled = true;
-        button.textContent = "Procesando...";
-        overlay.classList.add("is-visible");
-        overlay.setAttribute("aria-hidden", "false");
+      forms.forEach((form) => {
+        form.addEventListener("submit", () => {
+          const button = form.querySelector("button");
+          if (button) {
+            button.disabled = true;
+            button.textContent = "Procesando...";
+          }
+          progressTitle.textContent = form.dataset.progressTitle || "Procesando imagen";
+          progressText.textContent = form.dataset.progressText || "";
+          overlay.classList.add("is-visible");
+          overlay.setAttribute("aria-hidden", "false");
+        });
       });
     </script>
   </body>
