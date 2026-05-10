@@ -207,6 +207,37 @@ def _write_metrics_csvs(export_root: Path, summary: dict[str, object], image_met
         legacy_metrics.unlink()
 
 
+def _load_accepted_quality_ids(report_path: Path) -> set[str]:
+    if not report_path.exists():
+        raise FileNotFoundError("No hay reporte de control de calidad. Ejecuta la revision de calidad primero.")
+
+    accepted: set[str] = set()
+    with report_path.open("r", newline="", encoding="utf-8-sig") as f:
+        reader = csv.DictReader(f, delimiter=";")
+        for row in reader:
+            status = str(row.get("estado", "")).strip().lower()
+            image_id = str(row.get("image_id", "")).strip()
+            if status == "usable" and image_id:
+                accepted.add(image_id)
+
+    if not accepted:
+        raise ValueError("El control de calidad no encontro imagenes usables para procesar.")
+
+    return accepted
+
+
+def _load_preprocess_cell_mask(folder: Path, image_shape: tuple[int, ...]) -> np.ndarray | None:
+    mask_path = folder / "cell_mask_preprocess.tiff"
+    if not mask_path.exists():
+        return None
+
+    cells_lab = tifffile.imread(str(mask_path))
+    if cells_lab.shape != image_shape:
+        return None
+
+    return cells_lab.astype(np.int32, copy=False)
+
+
 def _build_infected_overlay(
     preview: np.ndarray, 
     cells_lab: np.ndarray, 
@@ -255,6 +286,7 @@ def run_pipeline_from_input(
     job_output_dir: Path,
     job_temp_dir: Path,
     job_id: str,
+    accepted_image_ids: set[str] | None = None,
 ) -> tuple[Path, list[dict[str, object]], dict[str, object]]:
     input_path = Path(input_path)
     job_output_dir = Path(job_output_dir)
@@ -264,6 +296,15 @@ def run_pipeline_from_input(
     job_temp_dir.mkdir(parents=True, exist_ok=True)
 
     images = _resolve_input_images(input_path, job_temp_dir)
+    image_entries = [(i, img_path) for i, img_path in enumerate(images, start=1)]
+    if accepted_image_ids is not None:
+        image_entries = [
+            (i, img_path)
+            for i, img_path in image_entries
+            if f"{i:04d}" in accepted_image_ids
+        ]
+        if not image_entries:
+            raise ValueError("Ninguna imagen de entrada coincide con las imagenes usables del control de calidad.")
 
     export_root = job_output_dir / f"job_{job_id}"
     images_root = export_root / "images"
@@ -272,7 +313,7 @@ def run_pipeline_from_input(
     all_metrics: list[dict[str, object]] = []
     preview_items: list[dict[str, object]] = []
 
-    for i, img_path in enumerate(images, start=1):
+    for i, img_path in image_entries:
         img_id = f"{i:04d}"
         folder = images_root / f"{img_id}__{img_path.stem}"
         folder.mkdir(parents=True, exist_ok=True)
@@ -285,7 +326,9 @@ def run_pipeline_from_input(
         preview = build_input_preview(img2d, colormap="viridis")
         save_preview(folder / "input_preview.png", preview)
 
-        cells_lab = segment_cells(img2d)
+        cells_lab = _load_preprocess_cell_mask(folder, img2d.shape)
+        if cells_lab is None:
+            cells_lab = segment_cells(img2d)
         #save_preview(folder / "cell_mask_raw_preview.png", build_instance_preview(cells_lab))
 
         #cell_areas = compute_instance_areas(cells_lab)
@@ -383,7 +426,10 @@ def run_pipeline_from_input(
     return zip_path, preview_items, summary_row
 
 
-def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]], dict[str, object]]:
+def run_pipeline(
+    job_id: str,
+    accepted_only: bool = False,
+) -> tuple[Path, list[dict[str, object]], dict[str, object]]:
     job_upload_dir = settings.uploads_dir / job_id
     job_output_dir = settings.outputs_dir / job_id
     job_temp_dir = settings.temp_dir / job_id
@@ -393,9 +439,15 @@ def run_pipeline(job_id: str) -> tuple[Path, list[dict[str, object]], dict[str, 
         raise FileNotFoundError("No hay archivo subido para este job.")
 
     uploaded = uploaded_files[0]
+    accepted_image_ids = None
+    if accepted_only:
+        report_path = job_output_dir / f"job_{job_id}" / "control_calidad_por_imagen.csv"
+        accepted_image_ids = _load_accepted_quality_ids(report_path)
+
     return run_pipeline_from_input(
         input_path=uploaded,
         job_output_dir=job_output_dir,
         job_temp_dir=job_temp_dir,
         job_id=job_id,
+        accepted_image_ids=accepted_image_ids,
     )

@@ -56,6 +56,13 @@ def process_images(
             help="Nombre del job. Si no se indica, se usa una marca de tiempo.",
         ),
     ] = None,
+    accepted_only: Annotated[
+        bool,
+        typer.Option(
+            "--accepted-only",
+            help="Procesar solo imagenes marcadas como usables por control_calidad_por_imagen.csv.",
+        ),
+    ] = False,
 ) -> None:
     run_id = _validate_job_id(job_id or _default_job_id())
     input_path = input_path.expanduser().resolve()
@@ -69,7 +76,7 @@ def process_images(
     if output_root.exists() and not output_root.is_dir():
         raise typer.BadParameter(f"La salida debe ser un directorio: {output_root}")
 
-    if job_output_dir.exists() and any(job_output_dir.iterdir()):
+    if not accepted_only and job_output_dir.exists() and any(job_output_dir.iterdir()):
         raise typer.BadParameter(
             f"La carpeta del job ya existe y no esta vacia: {job_output_dir}. "
             "Usa otro --job-id o borra/mueve esos resultados."
@@ -78,11 +85,19 @@ def process_images(
     try:
         from app.pipeline.runner import run_pipeline_from_input
 
+        accepted_image_ids = None
+        if accepted_only:
+            report_path = job_output_dir / f"job_{run_id}" / "control_calidad_por_imagen.csv"
+            from app.pipeline.runner import _load_accepted_quality_ids
+
+            accepted_image_ids = _load_accepted_quality_ids(report_path)
+
         zip_path, preview_items, _summary_metrics = run_pipeline_from_input(
             input_path=input_path,
             job_output_dir=job_output_dir,
             job_temp_dir=job_temp_dir,
             job_id=run_id,
+            accepted_image_ids=accepted_image_ids,
         )
     except Exception as exc:
         typer.secho(f"Error procesando imagenes: {exc}", fg=typer.colors.RED, err=True)
@@ -93,6 +108,70 @@ def process_images(
     typer.echo(f"Imagenes procesadas: {len(preview_items)}")
     typer.echo(f"Salida: {job_output_dir}")
     typer.echo(f"ZIP: {zip_path}")
+
+
+@app.command("preprocess")
+def preprocess_images(
+    input_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Imagen, ZIP o directorio con imagenes .tif, .tiff o .czi.",
+        ),
+    ],
+    output_dir: Annotated[
+        Path,
+        typer.Option(
+            "--output",
+            "-o",
+            help="Directorio raiz donde se guarda el control de calidad.",
+        ),
+    ] = settings.outputs_dir,
+    temp_dir: Annotated[
+        Path | None,
+        typer.Option(
+            "--temp-dir",
+            help="Directorio raiz para temporales. Por defecto se usa <output>/.temp.",
+        ),
+    ] = None,
+    job_id: Annotated[
+        str | None,
+        typer.Option(
+            "--job-id",
+            help="Nombre del job. Si no se indica, se usa una marca de tiempo.",
+        ),
+    ] = None,
+) -> None:
+    run_id = _validate_job_id(job_id or _default_job_id())
+    input_path = input_path.expanduser().resolve()
+    output_root = output_dir.expanduser().resolve()
+    job_output_dir = output_root / run_id
+    job_temp_dir = (temp_dir.expanduser().resolve() / run_id) if temp_dir else output_root / ".temp" / run_id
+
+    if not input_path.exists():
+        raise typer.BadParameter(f"No existe la entrada: {input_path}")
+
+    if output_root.exists() and not output_root.is_dir():
+        raise typer.BadParameter(f"La salida debe ser un directorio: {output_root}")
+
+    try:
+        from app.pipeline.preprocess import run_preprocess_from_input
+
+        preview_items, summary, report_path = run_preprocess_from_input(
+            input_path=input_path,
+            job_output_dir=job_output_dir,
+            job_temp_dir=job_temp_dir,
+            job_id=run_id,
+        )
+    except Exception as exc:
+        typer.secho(f"Error revisando calidad: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho("Control de calidad terminado.", fg=typer.colors.GREEN)
+    typer.echo(f"Job: {run_id}")
+    typer.echo(f"Imagenes revisadas: {len(preview_items)}")
+    typer.echo(f"Imagenes usables: {summary.get('imagenes_usables', 0)}")
+    typer.echo(f"Imagenes descartadas: {summary.get('imagenes_descartadas', 0)}")
+    typer.echo(f"Reporte: {report_path}")
 
 
 @app.command("web")

@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Control de calidad listo</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="page page-results">
+      <section class="panel panel-results">
+        <p class="eyebrow">Control de calidad</p>
+        <h1>Imágenes revisadas</h1>
+
+        <div class="meta">
+          <p><span>Job ID</span> {{ job_id }}</p>
+          <p><span>CSV</span> {{ report_name }}</p>
+        </div>
+
+        <section class="summary-grid" aria-label="Resumen de calidad">
+          <article>
+            <span>Revisadas</span>
+            <strong>{{ summary.imagenes_revisadas }}</strong>
+          </article>
+          <article>
+            <span>Usables</span>
+            <strong>{{ summary.imagenes_usables }}</strong>
+          </article>
+          <article>
+            <span>Descartadas</span>
+            <strong>{{ summary.imagenes_descartadas }}</strong>
+          </article>
+          <article>
+            <span>Score promedio</span>
+            <strong>{{ "%.2f"|format(summary.quality_score_promedio) }}</strong>
+          </article>
+        </section>
+
+        {% if preview_items and preview_items|length > 0 %}
+        <section class="viewer" aria-live="polite">
+          <div class="viewer-nav">
+            <button id="prev-btn" class="btn btn-ghost" type="button">Anterior</button>
+            <p id="viewer-title" class="viewer-title"></p>
+            <button id="next-btn" class="btn btn-ghost" type="button">Siguiente</button>
+          </div>
+
+          <div class="viewer-grid viewer-grid-qc">
+            <article class="viewer-card">
+              <h2>Original</h2>
+              <img id="img-input" src="" alt="Vista previa original" loading="lazy" />
+            </article>
+            <article class="viewer-card">
+              <h2>Calidad</h2>
+              <img id="img-quality" src="" alt="Overlay de calidad" loading="lazy" />
+            </article>
+            <article class="viewer-card">
+              <h2>Mascara de celulas</h2>
+              <img id="img-cell" src="" alt="Vista previa de celulas" loading="lazy" />
+            </article>
+            <article class="viewer-card viewer-metrics">
+              <h2>QC</h2>
+              <dl>
+                <div><dt>Estado</dt><dd id="m-estado">-</dd></div>
+                <div><dt>Score</dt><dd id="m-score">0</dd></div>
+                <div><dt>Celulas detectadas</dt><dd id="m-celulas-detectadas">0</dd></div>
+                <div><dt>Celulas validas</dt><dd id="m-celulas-validas">0</dd></div>
+                <div><dt>Proporcion valida</dt><dd id="m-proporcion">0</dd></div>
+                <div><dt>Motivo</dt><dd id="m-motivo">-</dd></div>
+              </dl>
+            </article>
+          </div>
+        </section>
+
+        <div class="table-wrap">
+          <table class="qc-table">
+            <thead>
+              <tr>
+                <th>Imagen</th>
+                <th>Estado</th>
+                <th>Score</th>
+                <th>Celulas</th>
+                <th>Validas</th>
+                <th>Motivo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in preview_items %}
+              <tr>
+                <td>{{ item.source_filename }}</td>
+                <td>
+                  <span class="status-pill status-{{ item.metrics.estado }}">
+                    {{ item.metrics.estado }}
+                  </span>
+                </td>
+                <td>{{ "%.2f"|format(item.metrics.quality_score) }}</td>
+                <td>{{ item.metrics.celulas_detectadas }}</td>
+                <td>{{ item.metrics.celulas_validas }}</td>
+                <td>{{ item.metrics.motivo_descarte or "-" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="muted">No hay imagenes para revisar.</p>
+        {% endif %}
+
+        <div class="actions actions-results">
+          <a href="/download-quality/{{ job_id }}" class="btn btn-ghost">Descargar CSV de calidad</a>
+          <form action="/process-accepted/{{ job_id }}" method="post" class="stack run-form">
+            <button type="submit" class="btn btn-primary">Procesar solo imagenes usables</button>
+          </form>
+          <form action="/process/{{ job_id }}" method="post" class="stack run-form">
+            <button type="submit" class="btn btn-ghost">Procesar segmentacion completa</button>
+          </form>
+          <a href="/" class="btn btn-ghost">Volver al inicio</a>
+        </div>
+      </section>
+    </main>
+
+    <div id="progress-overlay" class="progress-overlay" aria-live="polite" aria-hidden="true">
+      <div class="progress-card">
+        <div class="spinner" aria-hidden="true"></div>
+        <h2>Procesando imagen</h2>
+        <p>Esto puede tardar unos minutos segun el tamano del archivo y el modelo.</p>
+        <div class="progress-track">
+          <div class="progress-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    {% if preview_items and preview_items|length > 0 %}
+    <script id="preview-data" type="application/json">{{ preview_items | tojson }}</script>
+    <script>
+      (() => {
+        const dataEl = document.getElementById("preview-data");
+        const items = JSON.parse(dataEl.textContent || "[]");
+        if (!items.length) return;
+
+        const titleEl = document.getElementById("viewer-title");
+        const inputEl = document.getElementById("img-input");
+        const qualityEl = document.getElementById("img-quality");
+        const cellEl = document.getElementById("img-cell");
+        const estadoEl = document.getElementById("m-estado");
+        const scoreEl = document.getElementById("m-score");
+        const detectadasEl = document.getElementById("m-celulas-detectadas");
+        const validasEl = document.getElementById("m-celulas-validas");
+        const proporcionEl = document.getElementById("m-proporcion");
+        const motivoEl = document.getElementById("m-motivo");
+
+        let idx = 0;
+
+        function formatNumber(value) {
+          const number = Number(value ?? 0);
+          if (!Number.isFinite(number)) return String(value ?? 0);
+          return number.toFixed(2).replace(/\.00$/, "");
+        }
+
+        function render() {
+          const item = items[idx];
+          const m = item.metrics || {};
+          titleEl.textContent = `${item.title} (${idx + 1}/${items.length})`;
+          inputEl.src = item.input_url;
+          qualityEl.src = item.quality_url;
+          cellEl.src = item.cell_url;
+          estadoEl.textContent = String(m.estado ?? "-");
+          scoreEl.textContent = formatNumber(m.quality_score);
+          detectadasEl.textContent = String(m.celulas_detectadas ?? 0);
+          validasEl.textContent = String(m.celulas_validas ?? 0);
+          proporcionEl.textContent = formatNumber(m.proporcion_celulas_validas);
+          motivoEl.textContent = String(m.motivo_descarte || "-");
+        }
+
+        document.getElementById("prev-btn").addEventListener("click", () => {
+          idx = (idx - 1 + items.length) % items.length;
+          render();
+        });
+
+        document.getElementById("next-btn").addEventListener("click", () => {
+          idx = (idx + 1) % items.length;
+          render();
+        });
+
+        render();
+      })();
+    </script>
+    {% endif %}
+    <script>
+      document.querySelectorAll(".run-form").forEach((form) => {
+        form.addEventListener("submit", () => {
+          const button = form.querySelector("button");
+          if (button) {
+            button.disabled = true;
+            button.textContent = "Procesando...";
+          }
+          document.getElementById("progress-overlay").classList.add("is-visible");
+          document.getElementById("progress-overlay").setAttribute("aria-hidden", "false");
+        });
+      });
+    </script>
+  </body>
+</html>
