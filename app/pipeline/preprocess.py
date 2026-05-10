@@ -11,6 +11,7 @@ from scipy.ndimage import binary_erosion
 from app.core.config import settings
 from app.pipeline.cellpose import segment_cells
 from app.pipeline.io import load_image_2d
+from app.pipeline.postprocess import filter_cells_by_area
 from app.pipeline.previews import build_input_preview, build_instance_preview, save_preview
 from app.pipeline.runner import _convert_to_tiff, _resolve_input_images
 
@@ -148,6 +149,7 @@ def _write_quality_csv(path: Path, rows: list[dict[str, object]]) -> None:
         "source_filename",
         "estado",
         "quality_score",
+        "mascaras_cellpose",
         "celulas_detectadas",
         "celulas_validas",
         "celulas_invalidas",
@@ -191,7 +193,9 @@ def run_preprocess_from_input(
 
         img2d = load_image_2d(img_path)
         preview = build_input_preview(img2d, colormap="viridis")
-        cells_lab = segment_cells(img2d)
+        cells_raw_lab = segment_cells(img2d)
+        raw_cell_masks = int(cells_raw_lab.max()) if cells_raw_lab.size else 0
+        cells_lab = filter_cells_by_area(cells_raw_lab, min_area=QUALITY_MIN_CELL_AREA)
         quality = evaluate_image_quality(img2d, cells_lab)
 
         tifffile.imwrite(str(folder / "input.tiff"), _convert_to_tiff(img2d))
@@ -204,6 +208,7 @@ def run_preprocess_from_input(
         metrics = {
             "estado": status,
             "quality_score": float(quality["quality_score"]),
+            "mascaras_cellpose": raw_cell_masks,
             "celulas_detectadas": int(quality["total_cells"]),
             "celulas_validas": int(quality["valid_cells"]),
             "celulas_invalidas": int(quality["invalid_cells"]),
