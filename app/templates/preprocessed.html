@@ -62,6 +62,7 @@
               <dl>
                 <div><dt>Estado</dt><dd id="m-estado">-</dd></div>
                 <div><dt>Score</dt><dd id="m-score">0</dd></div>
+                <div><dt>Máscaras Cellpose</dt><dd id="m-mascaras-cellpose">0</dd></div>
                 <div><dt>Celulas detectadas</dt><dd id="m-celulas-detectadas">0</dd></div>
                 <div><dt>Celulas validas</dt><dd id="m-celulas-validas">0</dd></div>
                 <div><dt>Proporcion valida</dt><dd id="m-proporcion">0</dd></div>
@@ -78,6 +79,7 @@
                 <th>Imagen</th>
                 <th>Estado</th>
                 <th>Score</th>
+                <th>Mascaras Cellpose</th>
                 <th>Celulas</th>
                 <th>Validas</th>
                 <th>Motivo</th>
@@ -93,6 +95,7 @@
                   </span>
                 </td>
                 <td>{{ "%.2f"|format(item.metrics.quality_score) }}</td>
+                <td>{{ item.metrics.mascaras_cellpose }}</td>
                 <td>{{ item.metrics.celulas_detectadas }}</td>
                 <td>{{ item.metrics.celulas_validas }}</td>
                 <td>{{ item.metrics.motivo_descarte or "-" }}</td>
@@ -143,6 +146,7 @@
         const cellEl = document.getElementById("img-cell");
         const estadoEl = document.getElementById("m-estado");
         const scoreEl = document.getElementById("m-score");
+        const mascarasCellposeEl = document.getElementById("m-mascaras-cellpose");
         const detectadasEl = document.getElementById("m-celulas-detectadas");
         const validasEl = document.getElementById("m-celulas-validas");
         const proporcionEl = document.getElementById("m-proporcion");
@@ -165,6 +169,7 @@
           cellEl.src = item.cell_url;
           estadoEl.textContent = String(m.estado ?? "-");
           scoreEl.textContent = formatNumber(m.quality_score);
+          mascarasCellposeEl.textContent = String(m.mascaras_cellpose ?? 0);
           detectadasEl.textContent = String(m.celulas_detectadas ?? 0);
           validasEl.textContent = String(m.celulas_validas ?? 0);
           proporcionEl.textContent = formatNumber(m.proporcion_celulas_validas);

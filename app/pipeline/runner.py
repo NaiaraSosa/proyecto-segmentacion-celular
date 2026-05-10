@@ -37,10 +37,9 @@ PARASITE_CLUSTER_REASSIGNMENT = os.getenv("PARASITE_CLUSTER_REASSIGNMENT", "1").
     "yes",
     "si",
 }
-PARASITE_CLUSTER_RADIUS = int(os.getenv("PARASITE_CLUSTER_RADIUS", "25"))
-PARASITE_CLUSTER_MIN_SIZE = int(os.getenv("PARASITE_CLUSTER_MIN_SIZE", "3"))
-PARASITE_CLUSTER_MARGIN = float(os.getenv("PARASITE_CLUSTER_MARGIN", "1.5"))
-
+PARASITE_CLUSTER_RADIUS = int(os.getenv("PARASITE_CLUSTER_RADIUS", "40"))
+PARASITE_CLUSTER_MIN_SIZE = int(os.getenv("PARASITE_CLUSTER_MIN_SIZE", "2"))
+PARASITE_CLUSTER_MARGIN = float(os.getenv("PARASITE_CLUSTER_MARGIN", "1.2"))
 
 def _collect_images_from_dir(input_dir: Path) -> list[Path]:
     images = [p for p in input_dir.rglob("*") if p.is_file() and p.suffix.lower() in IO_IMAGE_EXTS]
