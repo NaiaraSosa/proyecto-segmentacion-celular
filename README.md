@@ -60,6 +60,15 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 > Nota: el proyecto fija `numpy>=1.26,<2` porque TensorFlow 2.15/StarDist/CSBDeep no son compatibles con NumPy 2.x. Si `pip install -e .` actualiza NumPy a 2.x, volver a ejecutar `pip install -e .` desde esta carpeta lo baja a una versión compatible.
 
+## Control de calidad
+
+Se puede realizar un preprocesado de las imágenes, para descartar aquellas que no resultan útiles para el análisis. Se realiza un control de calidad basado en la morfología de las células.
+
+```bash
+segmentacion preprocess ./carpeta-imgs --output ./data/outputs
+```
+
+
 ## Ejecutar desde consola
 
 La instalación editable crea el comando `segmentacion`.

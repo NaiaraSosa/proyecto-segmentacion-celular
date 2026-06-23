@@ -29,17 +29,12 @@ CELL_MIN_AREA = int(os.getenv("CELL_MIN_AREA", "700"))
 #CELL_MIN_AREA_PERCENTILE = float(os.getenv("CELL_MIN_AREA_PERCENTILE", "10"))
 PARASITE_MAX_AREA = int(os.getenv("PARASITE_MAX_AREA", "500"))
 #PARASITE_MAX_AREA_PERCENTILE = float(os.getenv("PARASITE_MAX_AREA_PERCENTILE", "90"))
-PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "200"))
+PARASITE_ASSIGN_SIGMA = float(os.getenv("PARASITE_ASSIGN_SIGMA", "100"))
 PARASITE_ASSIGN_THRESHOLD = float(os.getenv("PARASITE_ASSIGN_THRESHOLD", "0.4"))
-PARASITE_CLUSTER_REASSIGNMENT = os.getenv("PARASITE_CLUSTER_REASSIGNMENT", "1").strip().lower() in {
-    "1",
-    "true",
-    "yes",
-    "si",
-}
-PARASITE_CLUSTER_RADIUS = int(os.getenv("PARASITE_CLUSTER_RADIUS", "40"))
+PARASITE_CLUSTER_REASSIGNMENT = os.getenv("PARASITE_CLUSTER_REASSIGNMENT", "1")
+PARASITE_CLUSTER_RADIUS = int(os.getenv("PARASITE_CLUSTER_RADIUS", "30"))
 PARASITE_CLUSTER_MIN_SIZE = int(os.getenv("PARASITE_CLUSTER_MIN_SIZE", "2"))
-PARASITE_CLUSTER_MARGIN = float(os.getenv("PARASITE_CLUSTER_MARGIN", "1.2"))
+PARASITE_CLUSTER_MARGIN = float(os.getenv("PARASITE_CLUSTER_MARGIN", "1.5"))
 
 def _collect_images_from_dir(input_dir: Path) -> list[Path]:
     images = [p for p in input_dir.rglob("*") if p.is_file() and p.suffix.lower() in IO_IMAGE_EXTS]

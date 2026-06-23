@@ -38,7 +38,6 @@ def compute_metrics(
         - parasitos_asignados: Parásitos asignados a células con confianza ≥ threshold
         - parasitos_no_asignados: Parásitos sin asignación confiable
         - celulas_infectadas: Células con al menos un parásito asignado
-        - promedio_confianza_asignacion: Confianza promedio de todas las asignaciones
         - promedio_parasitos_por_celula: Promedio de parásitos por célula infectada
         - parasitos_por_celula: Lista con conteo de parásitos por célula
 
@@ -76,8 +75,7 @@ def compute_metrics(
         "parasitos_asignados": assigned_parasites,
         "parasitos_no_asignados": unassigned_parasites,
         "celulas_infectadas": infected_cells,
-        "promedio_confianza_asignacion": float(assignment["mean_assignment_confidence"]),
-        "promedio_parasitos_por_celula": avg_parasites_per_infected_cell,
+        "promedio_parasitos_por_celula": round(avg_parasites_per_infected_cell),
         "parasitos_por_celula": parasites_per_cell.tolist(),
     }
 
@@ -129,5 +127,5 @@ def summarize_job(image_metrics: list[Dict[str, object]]) -> Dict[str, object]:
         "total_parasitos_asignados": total_assigned,
         "total_parasitos_no_asignados": total_unassigned,
         "total_celulas_infectadas": total_infected_cells,
-        "promedio_parasitos_por_celula": avg_parasites_per_infected_cell,
+        "promedio_parasitos_por_celula": round(avg_parasites_per_infected_cell),
     }
