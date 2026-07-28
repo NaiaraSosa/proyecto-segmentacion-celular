@@ -108,7 +108,8 @@ La entrada puede ser:
 Desde la carpeta del proyecto:
 
 ```bash
-export CELL_MIN_AREA=500
+export CELL_MIN_AREA=2500
+export CELL_MAX_ELONGATION=4
 export PARASITE_MAX_AREA=400
 export PARASITE_ASSIGN_SIGMA=150
 export PARASITE_ASSIGN_THRESHOLD=0.2
@@ -136,7 +137,8 @@ Se documentan en `.env.example`:
 - `OUTPUTS_DIR`
 - `TEMP_DIR`
 - `MAX_UPLOAD_MB`
-- `CELL_MIN_AREA` (default: `500`)
+- `CELL_MIN_AREA` (default: `2500`)
+- `CELL_MAX_ELONGATION` (default: `4`, usar `0` para desactivar el filtro por elongación)
 - `PARASITE_MAX_AREA` (default: `450`)
 - `PARASITE_ASSIGN_SIGMA` (default: `200`)
 - `PARASITE_ASSIGN_THRESHOLD` (default: `0.4`)
@@ -165,7 +167,7 @@ data/
 
 1. Carga de imagen (`.tif/.tiff/.czi`) desde archivo suelto, ZIP o directorio.
 2. Segmentacion de células con Cellpose.
-3. Filtro de células por área mínima (`CELL_MIN_AREA`).
+3. Filtro de células por área mínima (`CELL_MIN_AREA`) y elongación máxima (`CELL_MAX_ELONGATION`).
 4. Segmentación de parásitos con StarDist.
 5. Filtro de parásitos por área máxima (`PARASITE_MAX_AREA`).
 6. Merge de parásitos cercanos para reducir doble conteo.

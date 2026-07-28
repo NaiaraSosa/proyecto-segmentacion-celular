@@ -23,7 +23,27 @@ def compute_instance_areas(labels: np.ndarray) -> np.ndarray:
     return areas[1:]
 
 
-def filter_cells_by_area(cells_lab: np.ndarray, min_area: int) -> np.ndarray:
+def _instance_elongation(mask: np.ndarray) -> float:
+    ys, xs = np.where(mask)
+    if ys.size < 3:
+        return float("inf")
+
+    coords = np.column_stack((ys, xs)).astype(float)
+    coords -= coords.mean(axis=0, keepdims=True)
+    cov = (coords.T @ coords) / max(coords.shape[0], 1)
+    eigvals = np.linalg.eigvalsh(cov)
+    major = float(np.sqrt(max(eigvals[-1], 0.0)))
+    minor = float(np.sqrt(max(eigvals[0], 0.0)))
+    if minor <= 1e-6:
+        return float("inf")
+    return major / minor
+
+
+def filter_cells_by_area(
+    cells_lab: np.ndarray,
+    min_area: int,
+    max_elongation: float | None = None,
+) -> np.ndarray:
     """
     Filtra células por área mínima y re-etiqueta las válidas.
 
@@ -42,14 +62,22 @@ def filter_cells_by_area(cells_lab: np.ndarray, min_area: int) -> np.ndarray:
     if cells_lab.size == 0 or int(cells_lab.max()) == 0:
         return cells_lab.astype(np.uint16, copy=False)
 
-    if min_area <= 0:
+    shape_filter_enabled = max_elongation is not None and float(max_elongation) > 0
+    if min_area <= 0 and not shape_filter_enabled:
         return cells_lab.astype(np.uint16, copy=False)
 
     areas = np.bincount(cells_lab.ravel())
-    keep_ids = np.where(areas >= int(min_area))[0]
-    keep_ids = keep_ids[keep_ids != 0]
+    candidate_ids = np.arange(1, areas.size)
+    if min_area > 0:
+        candidate_ids = candidate_ids[areas[candidate_ids] >= int(min_area)]
 
     out = np.zeros_like(cells_lab, dtype=np.uint16)
+    keep_ids: list[int] = []
+    for old_id in candidate_ids:
+        if shape_filter_enabled and _instance_elongation(cells_lab == old_id) > float(max_elongation):
+            continue
+        keep_ids.append(int(old_id))
+
     for new_id, old_id in enumerate(keep_ids, start=1):
         out[cells_lab == old_id] = new_id
     return out
