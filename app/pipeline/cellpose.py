@@ -2,7 +2,7 @@ from __future__ import annotations
 import numpy as np
 from cellpose import models, io as cellpose_io
 
-cellpose_io.logger_setup()  # Configura logging para Cellpose
+cellpose_io.logger_setup()  # configura logging para Cellpose
 
 _MODEL = None
 

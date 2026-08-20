@@ -1,11 +1,6 @@
 __pycache__/
-.enviroments
-data/uploads/
-data/outputs/
-data/temp/
+data/
 .vscode/
-segapp_env/
 programa_segmentacion.egg-info/
 .env
-testeo-imgs/
 metricas/

@@ -1,11 +1,11 @@
-﻿# **Automatización de segmentación celular para imágenes microscópicas**
+﻿# **Herramienta automatizada para la segmentación y cuantificación de cultivos infectados**
 
 En el Instituto de Investigaciones Biotecnológicas, se está trabajando para hallar fármacos capaces de curar la Enfermedad de Chagas. Con este fin, una parte del proceso consiste en ensayos de fármacos experimentales, en cultivos de células infectadas con los parásitos causantes de la enfermedad. Se toman  imágenes microscópicas del cultivo de las células, previa y posteriormente a ser infectadas. 
 
-Actualmente, la curación manual de imágenes (conteo y etiquetado de células) resulta demandante  en tiempo, por lo que se busca **entrenar y evaluar modelos de segmentación automática** para acelerar este proceso.  
+Actualmente, la curación manual de imágenes (conteo y etiquetado de células) resulta demandante  en tiempo, por lo que se busca **desarrollar una herramienta automatizada basada en modelos de segmentación automática**, capaz de acelerar este proceso.  
 
 ## Objetivo
-El objetivo principal de este proyecto es **automatizar las tareas de análisis de imágenes de microscopía**, con el fin de contar y etiquetar células, de manera precisa, rápida y reproducible. 
+El objetivo principal de este proyecto es **automatizar las tareas de análisis de imágenes de microscopía**, con el fin de cuantificar y etiquetar células, de manera precisa, rápida y reproducible. 
 
 ## Programa de Segmentación Celular
 
@@ -15,7 +15,6 @@ Aplicacion web en FastAPI para ejecutar un pipeline de segmentación de imágene
 
 - Python 3.10
 - Conda/Miniforge (recomendado)
-- SO probado: Windows
 
 ## Instalación
 

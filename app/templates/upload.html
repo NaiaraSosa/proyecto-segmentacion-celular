@@ -17,6 +17,7 @@
           <p><span>Archivo</span> {{ filename }}</p>
         </div>
 
+        <!----
         <form
           action="/preprocess/{{ job_id }}"
           method="post"
@@ -26,15 +27,16 @@
         >
           <button type="submit" class="btn btn-primary">Revisar calidad del batch</button>
         </form>
+        -->
 
         <form
           action="/process/{{ job_id }}"
           method="post"
           class="stack run-form"
           data-progress-title="Procesando imágenes"
-          data-progress-text="Esto puede tardar unos minutos segun el tamaño del archivo."
+          data-progress-text="Esto puede tardar unos minutos según el tamaño del archivo."
         >
-          <button type="submit" class="btn btn-ghost">Procesar segmentación</button>
+          <button type="submit" class="btn btn-primary">Procesar segmentación</button>
         </form>
 
         <a href="/" class="btn btn-ghost">Volver al inicio</a>
@@ -44,7 +46,7 @@
       <div class="progress-card">
         <div class="spinner" aria-hidden="true"></div>
         <h2 id="progress-title">Procesando imágenes</h2>
-        <p id="progress-text">Esto puede tardar unos minutos segun el tamaño del archivo.</p>
+        <p id="progress-text">Esto puede tardar unos minutos según el tamaño del archivo.</p>
         <div class="progress-track">
           <div class="progress-bar"></div>
         </div>
