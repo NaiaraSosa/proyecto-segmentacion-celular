@@ -30,6 +30,7 @@ bash Miniforge3-Linux-x86_64.sh -p /<carpeta>/miniforge3
 - Windows:
 
 Ingresar a: https://github.com/conda-forge/miniforge/releases/latest
+
 Descargar `Miniforge3-Windows-x86_64.exe` y ejecutar `.exe`.
 
 2. Crear entorno conda con Python 3.10:
