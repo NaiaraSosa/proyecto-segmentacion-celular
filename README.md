@@ -30,24 +30,18 @@ bash Miniforge3-Linux-x86_64.sh -p /<carpeta>/miniforge3
 - Windows:
 
 Ingresar a: https://github.com/conda-forge/miniforge/releases/latest
-
 Descargar `Miniforge3-Windows-x86_64.exe` y ejecutar `.exe`.
 
+2. Crear entorno conda con Python 3.10:
 
-2. Crear entorno:
-
-```bash
-conda create -p /rhoeql/lab/naiara/conda_envs/segapp_env python=3.10 -y
-```
-
-3. Activar entorno:
+Especificar correctamente la ruta donde se desea crear el entorno:
 
 ```bash
-conda activate C:\Users\naiar\OneDrive\Escritorio\Unsam\ciencia-de-datos\proyecto\segapp_env
-conda activate /rhoeql/lab/naiara/conda_envs/segapp_env
+conda create -p /ruta/a/conda_envs/segapp_env python=3.10 -y
+conda activate /ruta/a/conda_envs/segapp_env
 ```
 
-4. Instalar dependencias del proyecto `pyproject.toml`:
+3. Instalar dependencias del proyecto `pyproject.toml`:
 
 ```bash
 pip install -U pip
@@ -58,92 +52,55 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 > Nota: el proyecto fija `numpy>=1.26,<2` porque TensorFlow 2.15/StarDist/CSBDeep no son compatibles con NumPy 2.x. Si `pip install -e .` actualiza NumPy a 2.x, volver a ejecutar `pip install -e .` desde esta carpeta lo baja a una versión compatible.
 
-## Control de calidad
+## Ejecutar el programa
 
-Se puede realizar un preprocesado de las imágenes, para descartar aquellas que no resultan útiles para el análisis. Se realiza un control de calidad basado en la morfología de las células.
+La herramienta se puede usar de dos formas:
+- desde consola, para procesar imágenes directamente con comandos.
+- desde la webapp, para usar una interfaz visual en el navegador.
 
-```bash
-segmentacion preprocess ./carpeta-imgs --output ./data/outputs
-```
-
-
-## Ejecutar desde consola
-
-La instalación editable crea el comando `segmentacion`.
-
-Procesar una imagen, un ZIP o un directorio local con imágenes:
+Para ver los comandos disponibles y sus opciones:
 
 ```bash
-segmentacion process ./test-imgs --output ./data/outputs
+segmentacion --help 
 ```
 
-También se puede fijar un identificador de job:
+Para ver las opciones de cada modo:
+```bash
+segmentacion process --help 
+segmentacion web --help 
+```
+
+### Uso por consola
+
+Procesar una imagen, un ZIP o un directorio local con imágenes. Ejemplo de uso indicando carpeta de salida e identificador del experimento:
 
 ```bash
 segmentacion process ./test-imgs --output ./data/outputs --job-id experimento_01
-segmentacion process /home/naiara/code/test-imgs --output /home/naiara/proyecto-segmentacion-celular/data/outputs --job-id experimento_01
 ```
 
-La salida se guarda en:
-
-```text
-<output>/<job_id>/
-  job_<job_id>/
-    images/
-    metricas_generales.csv
-    metricas_por_imagen.csv
-  results_<job_id>.zip
-```
+En este caso --job-id permite asignarle un nombre al procesamiento. 
 
 La entrada puede ser:
 
-- una imagen `.tif`, `.tiff` o `.czi`
-- un `.zip` con imágenes soportadas
-- un directorio con imágenes soportadas, buscando recursivamente en subcarpetas
+- una imagen `.tif`, `.tiff` o `.czi`.
+- un `.zip` con imágenes soportadas.
+- un directorio con imágenes soportadas, buscando recursivamente en subcarpetas.
 
-## Ejecutar la webapp
+Nota importante: el comando preprocess todavía no puede utilizarse!
 
-Desde la carpeta del proyecto:
+## Uso de la webapp
+
+Es útil para probar imágenes y revisar resultados. Desde la carpeta del proyecto ejecutar:
 
 ```bash
-export CELL_MIN_AREA=2500
-export CELL_MAX_ELONGATION=4
-export PARASITE_MAX_AREA=400
-export PARASITE_ASSIGN_SIGMA=150
-export PARASITE_ASSIGN_THRESHOLD=0.2
-export PARASITE_CLUSTER_REASSIGNMENT=1
-export PARASITE_CLUSTER_RADIUS=25
-export PARASITE_CLUSTER_MIN_SIZE=3
-export PARASITE_CLUSTER_MARGIN=1.5
 segmentacion web --host 127.0.0.1 --port 8010
 ```
 
-URL local:
+Luego abrir en el navegador con la URL local:
 
 ```text
 http://127.0.0.1:8010
 ```
-
-## Variables de entorno
-
-Se documentan en `.env.example`:
-
-- `APP_HOST`
-- `APP_PORT`
-- `DATA_DIR`
-- `UPLOADS_DIR`
-- `OUTPUTS_DIR`
-- `TEMP_DIR`
-- `MAX_UPLOAD_MB`
-- `CELL_MIN_AREA` (default: `2500`)
-- `CELL_MAX_ELONGATION` (default: `4`, usar `0` para desactivar el filtro por elongación)
-- `PARASITE_MAX_AREA` (default: `450`)
-- `PARASITE_ASSIGN_SIGMA` (default: `200`)
-- `PARASITE_ASSIGN_THRESHOLD` (default: `0.4`)
-- `PARASITE_CLUSTER_REASSIGNMENT` (default: `1`, usar `0` para desactivar reasignación por clusters)
-- `PARASITE_CLUSTER_RADIUS` (default: `25`)
-- `PARASITE_CLUSTER_MIN_SIZE` (default: `3`)
-- `PARASITE_CLUSTER_MARGIN` (default: `1.5`)
 
 ## Estructura del proyecto
 
@@ -153,7 +110,7 @@ app/
   core/        # Configuracion general
   pipeline/    # Logica de procesamiento
   services/    # Utilidades de jobs/archivos
-  cli.py        # Entrada Typer para linea de comandos
+  cli.py       # Entrada Typer para linea de comandos
   main.py      # Entrada de la app
 data/
   uploads/     # Archivos subidos por job
@@ -161,7 +118,7 @@ data/
   temp/        # Temporales de procesamiento
 ```
 
-## Flujo actual
+## Flujo actual del procesamiento
 
 1. Carga de imagen (`.tif/.tiff/.czi`) desde archivo suelto, ZIP o directorio.
 2. Segmentacion de células con Cellpose.
@@ -169,17 +126,15 @@ data/
 4. Segmentación de parásitos con StarDist.
 5. Filtro de parásitos por área máxima (`PARASITE_MAX_AREA`).
 6. Merge de parásitos cercanos para reducir doble conteo.
-7. Asignación parasito -> célula (solape, o celula más cercana si no hay solape). Opcionalmente se refina agrupando clusters de parásitos cercanos.
+7. Asignación parasito -> célula por solape y proximidad, y clusters en una segunda instancia.
 8. Cálculo de métricas y export de resultados.
 
 ## Métricas exportadas
 
-El ZIP incluye dos CSV principales para abrirlos mas claro en planilla:
+El ZIP incluye dos CSV principales:
 
-- `metricas_generales.csv`: resumen del job completo.
+- `metricas_generales.csv`: resumen del procesamiento completo.
 - `metricas_por_imagen.csv`: una fila por imagen procesada.
-
-Los CSV se escriben con separador `;` para que Excel/planillas en configuraciones regionales en español los abran en columnas.
 
 Columnas principales:
 
@@ -193,20 +148,14 @@ Columnas principales:
 
 Por cada imagen:
 - input.tiff: imagen original convertida a TIFF.
-- input_preview.png: vista normalizada para inspección visual.
-- cell_mask.tiff: máscara de instancias de células (Cellpose).
-- parasite_mask.tiff: máscara de instancias de parásitos (StarDist).
+- cell_mask.tiff: máscara de instancias de células.
+- parasite_mask.tiff: máscara de instancias de parásitos.
+- infected_overlay: imagen original con células infectadas marcadas en rojo.
 
 Por cada experimento:
-- metricas_generales.csv: métricas generales del job.
+- metricas_generales.csv: métricas generales del procesamiento.
 - metricas_por_imagen.csv: métricas por imagen.
-- results_<job_id>.zip: paquete final de resultados.
+- histograma_global_global_parasitos_por_celula: distribución de los parásitos por célula a lo largo de todas las imágenes. 
 
-**Git**
-```bash
-git status
-git add .
-git commit -m "mensaje cambio"
-git push
-```
+
 
