@@ -7,7 +7,7 @@ Actualmente, la curación manual de imágenes (conteo y etiquetado de células) 
 ## Objetivo
 El objetivo principal de este proyecto es **automatizar las tareas de análisis de imágenes de microscopía**, con el fin de cuantificar y etiquetar células, de manera precisa, rápida y reproducible. 
 
-## Programa de Segmentación Celular
+## Programa de segmentación selular
 
 Aplicacion web en FastAPI para ejecutar un pipeline de segmentación de imágenes de microscopía.
 
@@ -37,7 +37,6 @@ Descargar `Miniforge3-Windows-x86_64.exe` y ejecutar `.exe`.
 2. Crear entorno:
 
 ```bash
-conda create -p C:\Users\naiar\OneDrive\Escritorio\Unsam\ciencia-de-datos\proyecto\segapp_env python=3.10 -y
 conda create -p /rhoeql/lab/naiara/conda_envs/segapp_env python=3.10 -y
 ```
 
@@ -198,7 +197,7 @@ Por cada imagen:
 - cell_mask.tiff: máscara de instancias de células (Cellpose).
 - parasite_mask.tiff: máscara de instancias de parásitos (StarDist).
 
-A nivel job:
+Por cada experimento:
 - metricas_generales.csv: métricas generales del job.
 - metricas_por_imagen.csv: métricas por imagen.
 - results_<job_id>.zip: paquete final de resultados.
